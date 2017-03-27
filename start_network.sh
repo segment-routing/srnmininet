@@ -61,6 +61,7 @@ if [ "$1" == "restart" ] || [ "$1" == "start" ]; then
 	sudo ip netns exec "A" screen -d -m -L ./dnsfwd sr-dnsfwd.conf
 	sleep 1
 	# Launch DNS server
+	cd ~/sdnres-sigcomm
 	if ! sudo ip netns exec "C" pkill -0 named; then
 		echo "Launch dns server"
 		sudo ip netns exec "C" screen -d -m -L /usr/sbin/named -u bind
