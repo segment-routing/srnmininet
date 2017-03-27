@@ -1,0 +1,64 @@
+16:56:39.323831 set_robust_list(0x7fc4a96cc9e0, 24) = 0 <0.000004>
+16:56:39.323911 dup2(4, 1)              = 1 <0.000006>
+16:56:39.323935 execve("/bin/sh", ["sh", "-c", "ovsdb-client monitor 'tcp:[::1]:6640' 'SR_test' 'NodeState' '' -f csv 2>/dev/null"], ["LC_PAPER=fr_BE.UTF-8", "LC_ADDRESS=fr_BE.UTF-8", "LC_MONETARY=fr_BE.UTF-8", "SHELL=/bin/bash", "TERM=xterm-256color", "LC_NUMERIC=fr_BE.UTF-8", "OLDPWD=/home/vagrant", "USER=root", "LC_TELEPHONE=fr_BE.UTF-8", "LS_COLORS=rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*"..., "SUDO_USER=vagrant", "SUDO_UID=1000", "USERNAME=root", "MAIL=/var/mail/root", "PATH=/home/vagrant/bin:/home/vagrant/.local/bin:/home/vagrant/quagga/sbin:/home/vagrant/ovsdb/bin:/home/vagrant/ovsdb/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games", "LC_IDENTIFICATION=fr_BE.UTF-8", "PWD=/home/vagrant/sdnres-sigcomm/sr-ctrl", "LANG=en_US", "LC_MEASUREMENT=fr_BE.UTF-8", "SHLVL=1", "SUDO_COMMAND=/usr/bin/env PATH=/home/vagrant/bin:/home/vagrant/.local/bin:/home/vagrant/quagga/sbin:/home/vagrant/ovsdb/bin:/home/vagrant/ovsdb/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games ip netns exec C bash", "HOME=/home/vagrant", "LANGUAGE=en_US:", "LOGNAME=root", "LESSOPEN=| /usr/bin/lesspipe %s", "SUDO_GID=1000", "DISPLAY=localhost:12.0", "LESSCLOSE=/usr/bin/lesspipe %s %s", "LC_TIME=fr_BE.UTF-8", "LC_NAME=fr_BE.UTF-8", "_=/usr/bin/strace"]) = 0 <0.000100>
+16:56:39.324103 brk(NULL)               = 0x564249e7d000 <0.000004>
+16:56:39.324136 access("/etc/ld.so.nohwcap", F_OK) = -1 ENOENT (No such file or directory) <0.000006>
+16:56:39.324160 mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f1d7e07a000 <0.000005>
+16:56:39.324181 access("/etc/ld.so.preload", R_OK) = -1 ENOENT (No such file or directory) <0.000005>
+16:56:39.324202 open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3 <0.000006>
+16:56:39.324221 fstat(3, {st_dev=makedev(8, 3), st_ino=1971162, st_mode=S_IFREG|0644, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=72, st_size=35676, st_atime=2017/03/09-15:55:52.580000000, st_mtime=2017/03/09-15:55:52.568000000, st_ctime=2017/03/09-15:55:52.572000000}) = 0 <0.000004>
+16:56:39.324243 mmap(NULL, 35676, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f1d7e071000 <0.000005>
+16:56:39.324257 close(3)                = 0 <0.000004>
+16:56:39.324273 access("/etc/ld.so.nohwcap", F_OK) = -1 ENOENT (No such file or directory) <0.000004>
+16:56:39.324291 open("/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3 <0.000007>
+16:56:39.324309 read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0P\t\2\0\0\0\0\0@\0\0\0\0\0\0\0\270b\34\0\0\0\0\0\0\0\0\0@\0008\0\n\0@\0H\0G\0\6\0\0\0\5\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0000\2\0\0\0\0\0\0000\2\0\0\0\0\0\0\10\0\0\0\0\0\0\0\3\0\0\0\4\0\0\0`Z\31\0\0\0\0\0`Z\31\0\0\0\0\0`Z\31\0\0\0\0\0\34\0\0\0\0\0\0\0\34\0\0\0\0\0\0\0\20\0\0\0\0\0\0\0\1\0\0\0\5\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\20\357\33\0\0\0\0\0\20\357\33\0\0\0\0\0\0\0 \0\0\0\0\0\1\0\0\0\6\0\0\0\300\367\33\0\0\0\0\0\300\367;\0\0\0\0\0\300\367;\0\0\0\0\0`O\0\0\0\0\0\0\340\221\0\0\0\0\0\0\0\0 \0\0\0\0\0\2\0\0\0\6\0\0\0\240+\34\0\0\0\0\0\240+<\0\0\0\0\0\240+<\0\0\0\0\0\340\1\0\0\0\0\0\0\340\1\0\0\0\0\0\0\10\0\0\0\0\0\0\0\4\0\0\0\4\0\0\0p\2\0\0\0\0\0\0p\2\0\0\0\0\0\0p\2\0\0\0\0\0\0D\0\0\0\0\0\0\0D\0\0\0\0\0\0\0\4\0\0\0\0\0\0\0\7\0\0\0\4\0\0\0\300\367\33\0\0\0\0\0\300\367;\0\0\0\0\0\300\367;\0\0\0\0\0\20\0\0\0\0\0\0\0x\0\0\0\0\0\0\0\10\0\0\0\0\0\0\0P\345td\4\0\0\0|Z\31\0\0\0\0\0|Z\31\0\0\0\0\0|Z\31\0\0\0\0\0\274T\0\0\0\0\0\0\274T\0\0\0\0\0\0\4\0\0\0\0\0\0\0Q\345td\6\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\20\0\0\0\0\0\0\0R\345td\4\0\0\0\300\367\33\0\0\0\0\0\300\367;\0\0\0\0\0\300\367;\0\0\0\0\0@8\0\0\0\0\0\0@8\0\0\0\0\0\0\1\0\0\0\0\0\0\0\4\0\0\0\24\0\0\0\3\0\0\0GNU\0`\23\25@\332\334g\226\312\2633\2104\236nNhi S\4\0\0\0\20\0\0\0\1\0\0\0GNU\0\0\0\0\0\2\0\0\0\6\0\0\0 \0\0\0\0\0\0\0\363\3\0\0\n\0\0\0\0\1\0\0\16\0\0\0\0000\20D\240 \2\1\210\3\346\220\305E\214\0\304\0\10\0\5\204\0`\300\200\0\r\212\f\0\4\20\0\210@2\10*@\210T<, \0162H&\204\300\214\4\10\0\2\2\16\241\254\32\4f\300\0\3002\0\300\0P\1 \201\10\204\v  ($\0\4 Z\0\20X\200\312DB(\0\6\200\20\30B\0 @\200\0IP\0Q\212@\22\0\0\0\0\10\0\0\21\20", 832) = 832 <0.000004>
+16:56:39.324335 fstat(3, {st_dev=makedev(8, 3), st_ino=1580628, st_mode=S_IFREG|0755, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=3648, st_size=1864888, st_atime=2017/03/09-12:35:17.736000000, st_mtime=2016/11/16-22:50:47, st_ctime=2017/01/04-08:54:26.352594404}) = 0 <0.000003>
+16:56:39.324358 mmap(NULL, 3967392, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f1d7da8e000 <0.000006>
+16:56:39.324375 mprotect(0x7f1d7dc4d000, 2097152, PROT_NONE) = 0 <0.000008>
+16:56:39.324392 mmap(0x7f1d7de4d000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1bf000) = 0x7f1d7de4d000 <0.000008>
+16:56:39.324414 mmap(0x7f1d7de53000, 14752, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f1d7de53000 <0.000006>
+16:56:39.324436 close(3)                = 0 <0.000004>
+16:56:39.324460 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f1d7e070000 <0.000005>
+16:56:39.324478 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f1d7e06f000 <0.000004>
+16:56:39.324494 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f1d7e06e000 <0.000004>
+16:56:39.324509 arch_prctl(ARCH_SET_FS, 0x7f1d7e06f700) = 0 <0.000003>
+16:56:39.324562 mprotect(0x7f1d7de4d000, 16384, PROT_READ) = 0 <0.000009>
+16:56:39.324615 mprotect(0x564249a8d000, 8192, PROT_READ) = 0 <0.000007>
+16:56:39.324677 mprotect(0x7f1d7e07c000, 4096, PROT_READ) = 0 <0.000019>
+16:56:39.324711 munmap(0x7f1d7e071000, 35676) = 0 <0.000012>
+16:56:39.324766 getuid()                = 0 <0.000004>
+16:56:39.324783 getgid()                = 0 <0.000003>
+16:56:39.324795 getpid()                = 6136 <0.000004>
+16:56:39.324808 rt_sigaction(SIGCHLD, {0x564249881540, ~[RTMIN RT_1], SA_RESTORER, 0x7f1d7dac34b0}, NULL, 8) = 0 <0.000004>
+16:56:39.324827 geteuid()               = 0 <0.000004>
+16:56:39.324872 brk(NULL)               = 0x564249e7d000 <0.000004>
+16:56:39.324886 brk(0x564249e9e000)     = 0x564249e9e000 <0.000004>
+16:56:39.324917 getppid()               = 6133 <0.000004>
+16:56:39.324932 stat("/home/vagrant/sdnres-sigcomm/sr-ctrl", {st_dev=makedev(8, 3), st_ino=1183899, st_mode=S_IFDIR|0775, st_nlink=3, st_uid=1000, st_gid=1000, st_blksize=4096, st_blocks=8, st_size=4096, st_atime=2017/03/09-12:54:37.896000000, st_mtime=2017/03/08-09:48:30.148000000, st_ctime=2017/03/08-09:48:30.148000000}) = 0 <0.000006>
+16:56:39.324959 stat(".", {st_dev=makedev(8, 3), st_ino=1183899, st_mode=S_IFDIR|0775, st_nlink=3, st_uid=1000, st_gid=1000, st_blksize=4096, st_blocks=8, st_size=4096, st_atime=2017/03/09-12:54:37.896000000, st_mtime=2017/03/08-09:48:30.148000000, st_ctime=2017/03/08-09:48:30.148000000}) = 0 <0.000004>
+16:56:39.324986 geteuid()               = 0 <0.000003>
+16:56:39.325000 getegid()               = 0 <0.000004>
+16:56:39.325012 rt_sigaction(SIGINT, NULL, {SIG_DFL, [], 0}, 8) = 0 <0.000004>
+16:56:39.325027 rt_sigaction(SIGINT, {0x564249881540, ~[RTMIN RT_1], SA_RESTORER, 0x7f1d7dac34b0}, NULL, 8) = 0 <0.000004>
+16:56:39.325042 rt_sigaction(SIGQUIT, NULL, {SIG_DFL, [], 0}, 8) = 0 <0.000004>
+16:56:39.325057 rt_sigaction(SIGQUIT, {SIG_DFL, ~[RTMIN RT_1], SA_RESTORER, 0x7f1d7dac34b0}, NULL, 8) = 0 <0.000003>
+16:56:39.325071 rt_sigaction(SIGTERM, NULL, {SIG_DFL, [], 0}, 8) = 0 <0.000003>
+16:56:39.325085 rt_sigaction(SIGTERM, {SIG_DFL, ~[RTMIN RT_1], SA_RESTORER, 0x7f1d7dac34b0}, NULL, 8) = 0 <0.000004>
+16:56:39.325116 open("/dev/null", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3 <0.000010>
+16:56:39.325140 fcntl(2, F_DUPFD, 10)   = 10 <0.000004>
+16:56:39.325155 close(2)                = 0 <0.000004>
+16:56:39.325167 fcntl(10, F_SETFD, FD_CLOEXEC) = 0 <0.000004>
+16:56:39.325180 dup2(3, 2)              = 2 <0.000003>
+16:56:39.325193 close(3)                = 0 <0.000003>
+16:56:39.325206 stat("/home/vagrant/bin/ovsdb-client", 0x7ffe006155b0) = -1 ENOENT (No such file or directory) <0.000004>
+16:56:39.325224 stat("/home/vagrant/.local/bin/ovsdb-client", 0x7ffe006155b0) = -1 ENOENT (No such file or directory) <0.000004>
+16:56:39.325240 stat("/home/vagrant/quagga/sbin/ovsdb-client", 0x7ffe006155b0) = -1 ENOENT (No such file or directory) <0.000006>
+16:56:39.325256 stat("/home/vagrant/ovsdb/bin/ovsdb-client", {st_dev=makedev(8, 3), st_ino=1053505, st_mode=S_IFREG|0755, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=3664, st_size=1873760, st_atime=2017/03/09-16:11:41.720000000, st_mtime=2017/03/08-15:15:20.944000000, st_ctime=2017/03/08-15:15:20.944000000}) = 0 <0.000005>
+16:56:39.325281 clone(child_stack=0, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7f1d7e06f9d0) = 6137 <0.000036>
+16:56:39.325345 wait4(-1, [{WIFEXITED(s) && WEXITSTATUS(s) == 1}], 0, NULL) = 6137 <37.202704>
+16:57:16.528068 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=6137, si_uid=0, si_status=1, si_utime=0, si_stime=0} ---
+16:57:16.528080 rt_sigreturn({mask=[]}) = 6137 <0.000003>
+16:57:16.528096 dup2(10, 2)             = 2 <0.000004>
+16:57:16.528111 close(10)               = 0 <0.000003>
+16:57:16.528127 exit_group(1)           = ?
+16:57:16.528191 +++ exited with 1 +++

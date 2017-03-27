@@ -1,0 +1,416 @@
+From be4a91b880100578e7f9f288c63061c3be4897eb Mon Sep 17 00:00:00 2001
+From: David Lebrun <david.lebrun@uclouvain.be>
+Date: Thu, 22 Dec 2016 14:13:41 +0100
+Subject: [PATCH] ipv6: sr: add action mechanisms to hook on SR processing
+
+This patch provides a simple hook to modify and restore the DA of
+the skb being processed by ipv6_srh_rcv(), right before and after
+the call to ip6_route_input(). The hook is triggered by the presence
+of a particular active segment, also known as binding segment.
+The mapping (binding segment, temporary DA) is configured through
+the SEG6 genetlink interface.
+
+Signed-off-by: David Lebrun <david.lebrun@uclouvain.be>
+---
+ include/net/seg6.h             |  15 +++
+ include/uapi/linux/seg6_genl.h |   3 +
+ net/ipv6/exthdrs.c             |  10 ++
+ net/ipv6/seg6.c                | 252 +++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 280 insertions(+)
+
+diff --git a/include/net/seg6.h b/include/net/seg6.h
+index 4e03575..54230c1 100644
+--- a/include/net/seg6.h
++++ b/include/net/seg6.h
+@@ -39,12 +39,21 @@ static inline void update_csum_diff16(struct sk_buff *skb, __be32 *from,
+ 	skb->csum = ~csum_partial((char *)diff, sizeof(diff), ~skb->csum);
+ }
+ 
++struct seg6_action {
++	struct rhash_head node;
++	struct rcu_head rcu;
++
++	struct in6_addr bsid;
++	struct in6_addr pre_addr;
++};
++
+ struct seg6_pernet_data {
+ 	struct mutex lock;
+ 	struct in6_addr __rcu *tun_src;
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+ 	struct rhashtable hmac_infos;
+ #endif
++	struct rhashtable actions;
+ };
+ 
+ static inline struct seg6_pernet_data *seg6_pernet(struct net *net)
+@@ -59,4 +68,10 @@ extern void seg6_iptunnel_exit(void);
+ 
+ extern bool seg6_validate_srh(struct ipv6_sr_hdr *srh, int len);
+ 
++extern struct seg6_action *seg6_action_lookup(struct net *net,
++					      struct in6_addr *bsid);
++extern int seg6_action_add(struct net *net, struct in6_addr *bsid,
++			   struct seg6_action *act);
++extern int seg6_action_del(struct net *net, struct in6_addr *bsid);
++
+ #endif
+diff --git a/include/uapi/linux/seg6_genl.h b/include/uapi/linux/seg6_genl.h
+index fcf1c60..09b6d40 100644
+--- a/include/uapi/linux/seg6_genl.h
++++ b/include/uapi/linux/seg6_genl.h
+@@ -13,6 +13,7 @@ enum {
+ 	SEG6_ATTR_SECRETLEN,
+ 	SEG6_ATTR_ALGID,
+ 	SEG6_ATTR_HMACINFO,
++	SEG6_ATTR_BSID,
+ 	__SEG6_ATTR_MAX,
+ };
+ 
+@@ -24,6 +25,8 @@ enum {
+ 	SEG6_CMD_DUMPHMAC,
+ 	SEG6_CMD_SET_TUNSRC,
+ 	SEG6_CMD_GET_TUNSRC,
++	SEG6_CMD_SETACTION,
++	SEG6_CMD_DUMPACTION,
+ 	__SEG6_CMD_MAX,
+ };
+ 
+diff --git a/net/ipv6/exthdrs.c b/net/ipv6/exthdrs.c
+index 926818c..fd4b527 100644
+--- a/net/ipv6/exthdrs.c
++++ b/net/ipv6/exthdrs.c
+@@ -324,6 +324,8 @@ static int ipv6_srh_rcv(struct sk_buff *skb)
+ {
+ 	struct inet6_skb_parm *opt = IP6CB(skb);
+ 	struct net *net = dev_net(skb->dev);
++	struct in6_addr *active_addr;
++	struct seg6_action *act;
+ 	struct ipv6_sr_hdr *hdr;
+ 	struct inet6_dev *idev;
+ 	struct in6_addr *addr;
+@@ -408,6 +410,7 @@ static int ipv6_srh_rcv(struct sk_buff *skb)
+ 
+ 	hdr = (struct ipv6_sr_hdr *)skb_transport_header(skb);
+ 
++	active_addr = hdr->segments + hdr->segments_left;
+ 	hdr->segments_left--;
+ 	addr = hdr->segments + hdr->segments_left;
+ 
+@@ -435,8 +438,15 @@ static int ipv6_srh_rcv(struct sk_buff *skb)
+ 
+ 	skb_dst_drop(skb);
+ 
++	act = seg6_action_lookup(net, active_addr);
++	if (act)
++		ipv6_hdr(skb)->daddr = act->pre_addr;
++
+ 	ip6_route_input(skb);
+ 
++	if (act)
++		ipv6_hdr(skb)->daddr = *addr;
++
+ 	if (skb_dst(skb)->error) {
+ 		dst_input(skb);
+ 		return -1;
+diff --git a/net/ipv6/seg6.c b/net/ipv6/seg6.c
+index b172d85..0208d43 100644
+--- a/net/ipv6/seg6.c
++++ b/net/ipv6/seg6.c
+@@ -29,6 +29,78 @@
+ #include <net/seg6_hmac.h>
+ #endif
+ 
++static void seg6_action_release(struct seg6_action *act)
++{
++	kfree_rcu(act, rcu);
++}
++
++static void seg6_free_action(void *ptr, void *arg)
++{
++	struct seg6_action *act = ptr;
++
++	if (act)
++		seg6_action_release(act);
++}
++
++static int seg6_action_cmpfn(struct rhashtable_compare_arg *arg,
++			     const void *obj)
++{
++	const struct seg6_action *act = obj;
++
++	return memcmp(&act->bsid, arg->key, sizeof(struct in6_addr));
++}
++
++static const struct rhashtable_params brht_params = {
++	.head_offset		= offsetof(struct seg6_action, node),
++	.key_offset		= offsetof(struct seg6_action, bsid),
++	.key_len		= sizeof(struct in6_addr),
++	.automatic_shrinking	= true,
++	.obj_cmpfn		= seg6_action_cmpfn,
++};
++
++/* rcu held */
++struct seg6_action *seg6_action_lookup(struct net *net, struct in6_addr *bsid)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++	struct seg6_action *act;
++
++	act = rhashtable_lookup_fast(&sdata->actions, bsid, brht_params);
++
++	return act;
++}
++
++int seg6_action_add(struct net *net, struct in6_addr *bsid,
++		    struct seg6_action *act)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++	int err;
++
++	err = rhashtable_lookup_insert_fast(&sdata->actions, &act->node,
++					    brht_params);
++
++	return err;
++}
++
++int seg6_action_del(struct net *net, struct in6_addr *bsid)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++	struct seg6_action *act;
++	int err = -ENOENT;
++
++	act = rhashtable_lookup_fast(&sdata->actions, bsid, brht_params);
++	if (!act)
++		goto out;
++
++	err = rhashtable_remove_fast(&sdata->actions, &act->node, brht_params);
++	if (err)
++		goto out;
++
++	seg6_action_release(act);
++
++out:
++	return err;
++}
++
+ bool seg6_validate_srh(struct ipv6_sr_hdr *srh, int len)
+ {
+ 	int trailing;
+@@ -77,6 +149,8 @@ static const struct nla_policy seg6_genl_policy[SEG6_ATTR_MAX + 1] = {
+ 	[SEG6_ATTR_SECRETLEN]		= { .type = NLA_U8, },
+ 	[SEG6_ATTR_ALGID]			= { .type = NLA_U8, },
+ 	[SEG6_ATTR_HMACINFO]		= { .type = NLA_NESTED, },
++	[SEG6_ATTR_BSID]		= { .type = NLA_BINARY,
++					    .len = sizeof(struct in6_addr) },
+ };
+ 
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+@@ -356,6 +430,166 @@ static int seg6_genl_dumphmac(struct sk_buff *skb, struct netlink_callback *cb)
+ 
+ #endif
+ 
++static int seg6_genl_setaction(struct sk_buff *skb, struct genl_info *info)
++{
++	struct net *net = genl_info_net(info);
++	struct seg6_pernet_data *sdata;
++	struct in6_addr *bsid, *dst;
++	struct seg6_action *act;
++	int err = 0;
++
++	sdata = seg6_pernet(net);
++
++	if (!info->attrs[SEG6_ATTR_BSID] || !info->attrs[SEG6_ATTR_DST])
++		return -EINVAL;
++
++	bsid = nla_data(info->attrs[SEG6_ATTR_BSID]);
++	dst = nla_data(info->attrs[SEG6_ATTR_DST]);
++
++	mutex_lock(&sdata->lock);
++	act = seg6_action_lookup(net, bsid);
++
++	if (ipv6_addr_any(dst)) {
++		if (!act)
++			err = -ENOENT;
++
++		err = seg6_action_del(net, bsid);
++
++		goto out_unlock;
++	}
++
++	if (act) {
++		err = seg6_action_del(net, bsid);
++		if (err)
++			goto out_unlock;
++	}
++
++	act = kzalloc(sizeof(*act), GFP_KERNEL);
++	if (!act) {
++		err = -ENOMEM;
++		goto out_unlock;
++	}
++
++	memcpy(&act->bsid, bsid, sizeof(*bsid));
++	memcpy(&act->pre_addr, dst, sizeof(*dst));
++
++	err = seg6_action_add(net, bsid, act);
++	if (err)
++		kfree(act);
++
++out_unlock:
++	mutex_unlock(&sdata->lock);
++	return err;
++}
++
++static int __seg6_action_fill_info(struct seg6_action *act,
++				   struct sk_buff *msg)
++{
++	if (nla_put(msg, SEG6_ATTR_BSID, sizeof(struct in6_addr), &act->bsid) ||
++	    nla_put(msg, SEG6_ATTR_DST, sizeof(struct in6_addr),
++		    &act->pre_addr))
++		return -1;
++
++	return 0;
++}
++
++static int __seg6_genl_dumpaction_element(struct seg6_action *act,
++					  u32 portid, u32 seq, u32 flags,
++					  struct sk_buff *skb, u8 cmd)
++{
++	void *hdr;
++
++	hdr = genlmsg_put(skb, portid, seq, &seg6_genl_family, flags, cmd);
++	if (!hdr)
++		return -ENOMEM;
++
++	if (__seg6_action_fill_info(act, skb) < 0)
++		goto nla_put_failure;
++
++	genlmsg_end(skb, hdr);
++	return 0;
++
++nla_put_failure:
++	genlmsg_cancel(skb, hdr);
++	return -EMSGSIZE;
++}
++
++static int seg6_genl_dumpaction_start(struct netlink_callback *cb)
++{
++	struct net *net = sock_net(cb->skb->sk);
++	struct seg6_pernet_data *sdata;
++	struct rhashtable_iter *iter;
++
++	sdata = seg6_pernet(net);
++	iter = (struct rhashtable_iter *)cb->args[0];
++
++	if (!iter) {
++		iter = kmalloc(sizeof(*iter), GFP_KERNEL);
++		if (!iter)
++			return -ENOMEM;
++
++		cb->args[0] = (long)iter;
++	}
++
++	rhashtable_walk_enter(&sdata->actions, iter);
++
++	return 0;
++}
++
++static int seg6_genl_dumpaction_done(struct netlink_callback *cb)
++{
++	struct rhashtable_iter *iter = (struct rhashtable_iter *)cb->args[0];
++
++	rhashtable_walk_exit(iter);
++
++	kfree(iter);
++
++	return 0;
++}
++
++static int seg6_genl_dumpaction(struct sk_buff *skb,
++				struct netlink_callback *cb)
++{
++	struct rhashtable_iter *iter = (struct rhashtable_iter *)cb->args[0];
++	struct net *net = sock_net(skb->sk);
++	struct seg6_pernet_data *sdata;
++	struct seg6_action *act;
++	int ret;
++
++	sdata = seg6_pernet(net);
++
++	ret = rhashtable_walk_start(iter);
++	if (ret && ret != -EAGAIN)
++		goto done;
++
++	for (;;) {
++		act = rhashtable_walk_next(iter);
++
++		if (IS_ERR(act)) {
++			if (PTR_ERR(act) == -EAGAIN)
++				continue;
++			ret = PTR_ERR(act);
++			goto done;
++		} else if (!act) {
++			break;
++		}
++
++		ret = __seg6_genl_dumpaction_element(act,
++						     NETLINK_CB(cb->skb).portid,
++						     cb->nlh->nlmsg_seq,
++						     NLM_F_MULTI,
++						     skb, SEG6_CMD_DUMPACTION);
++		if (ret)
++			goto done;
++	}
++
++	ret = skb->len;
++
++done:
++	rhashtable_walk_stop(iter);
++	return ret;
++}
++
+ static int __net_init seg6_net_init(struct net *net)
+ {
+ 	struct seg6_pernet_data *sdata;
+@@ -378,6 +612,8 @@ static int __net_init seg6_net_init(struct net *net)
+ 	seg6_hmac_net_init(net);
+ #endif
+ 
++	rhashtable_init(&sdata->actions, &brht_params);
++
+ 	return 0;
+ }
+ 
+@@ -385,6 +621,8 @@ static void __net_exit seg6_net_exit(struct net *net)
+ {
+ 	struct seg6_pernet_data *sdata = seg6_pernet(net);
+ 
++	rhashtable_free_and_destroy(&sdata->actions, seg6_free_action, NULL);
++
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+ 	seg6_hmac_net_exit(net);
+ #endif
+@@ -425,6 +663,20 @@ static const struct genl_ops seg6_genl_ops[] = {
+ 		.policy = seg6_genl_policy,
+ 		.flags	= GENL_ADMIN_PERM,
+ 	},
++	{
++		.cmd	= SEG6_CMD_SETACTION,
++		.doit	= seg6_genl_setaction,
++		.policy	= seg6_genl_policy,
++		.flags	= GENL_ADMIN_PERM,
++	},
++	{
++		.cmd	= SEG6_CMD_DUMPACTION,
++		.start	= seg6_genl_dumpaction_start,
++		.dumpit	= seg6_genl_dumpaction,
++		.done	= seg6_genl_dumpaction_done,
++		.policy	= seg6_genl_policy,
++		.flags	= GENL_ADMIN_PERM,
++	},
+ };
+ 
+ static struct genl_family seg6_genl_family __ro_after_init = {
+-- 
+2.7.3
+

@@ -1,0 +1,50 @@
+16:56:46.553185 set_robust_list(0x7fe9a72a59e0, 24) = 0 <0.000010>
+16:56:46.553251 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001560>
+16:56:47.555027 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001564>
+16:56:48.556895 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001602>
+16:56:49.558750 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001205>
+16:56:50.560123 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001140>
+16:56:51.561332 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001175>
+16:56:52.562606 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001688>
+16:56:53.564745 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001165>
+16:56:54.566132 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001175>
+16:56:55.567376 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001552>
+16:56:56.569109 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001178>
+16:56:57.570440 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001249>
+16:56:58.571758 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001189>
+16:56:59.573013 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001187>
+16:57:00.574277 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001259>
+16:57:01.575608 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001229>
+16:57:02.576906 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001191>
+16:57:03.578165 select(4, [3], NULL, NULL, {1, 0}) = 1 (in [3], left {0, 287702}) <0.712313>
+16:57:04.290543 mmap(NULL, 134217728, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, -1, 0) = 0x7fe990000000 <0.000008>
+16:57:04.290571 munmap(0x7fe994000000, 67108864) = 0 <0.000009>
+16:57:04.290590 mprotect(0x7fe990000000, 135168, PROT_READ|PROT_WRITE) = 0 <0.000005>
+16:57:04.290617 recvfrom(3, "'\206\1\0\0\1\0\0\0\0\0\1\7accessI\4test\2sr\0\0\34\0\1\0\0)\5\0\0\0\0\0\0 \375\351\0\7accessA\375\352\0\4\0\0\0\5\375\353\0\4\0\0\0\5\375\354\0\1A", 512, 0, {sa_family=AF_INET6, sin6_port=htons(40931), inet_pton(AF_INET6, "fc00:2:0:1::1", &sin6_addr), sin6_flowinfo=0, sin6_scope_id=0}, [28]) = 76 <0.000006>
+16:57:04.290646 futex(0x615148, FUTEX_WAKE_PRIVATE, 1) = 1 <0.000007>
+16:57:04.290665 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001116>
+16:57:05.291839 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001212>
+16:57:06.293129 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001205>
+16:57:07.294407 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001123>
+16:57:08.295600 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001151>
+16:57:09.296830 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001379>
+16:57:10.298396 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001190>
+16:57:11.299697 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001224>
+16:57:12.301023 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001195>
+16:57:13.302334 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001213>
+16:57:14.303665 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001204>
+16:57:15.305005 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001204>
+16:57:16.306364 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001072>
+16:57:17.307487 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.001279>
+16:57:18.308882 select(4, [3], NULL, NULL, {1, 0}) = 0 (Timeout) <1.000347>
+16:57:19.309318 select(4, [3], NULL, NULL, {1, 0}) = ? ERESTARTNOHAND (To be restarted if no handler) <0.335665>
+16:57:19.645008 --- SIGUSR1 {si_signo=SIGUSR1, si_code=SI_TKILL, si_pid=6149, si_uid=0} ---
+16:57:19.645019 rt_sigreturn({mask=[INT]}) = -1 EINTR (Interrupted system call) <0.000004>
+16:57:19.645041 dup(2)                  = 6 <0.000004>
+16:57:19.645056 fcntl(6, F_GETFL)       = 0x8002 (flags O_RDWR|O_LARGEFILE) <0.000003>
+16:57:19.645076 fstat(6, {st_dev=makedev(0, 18), st_ino=9, st_mode=S_IFCHR|0620, st_nlink=1, st_uid=1000, st_gid=5, st_blksize=1024, st_blocks=0, st_rdev=makedev(136, 6), st_atime=2017/03/09-16:56:46.376000000, st_mtime=2017/03/09-16:56:46.376000000, st_ctime=2017/03/09-16:00:23.376000000}) = 0 <0.000005>
+16:57:19.645104 write(6, "Select fail: Interrupted system call\n", 37) = 37 <0.000285>
+16:57:19.645418 close(6)                = 0 <0.000003>
+16:57:19.645439 madvise(0x7fe9a6aa5000, 8368128, MADV_DONTNEED) = 0 <0.000009>
+16:57:19.645458 exit(0)                 = ?
+16:57:19.645488 +++ exited with 0 +++

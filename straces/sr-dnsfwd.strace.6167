@@ -1,0 +1,9 @@
+16:56:49.298978 set_robust_list(0x7f2dc90309e0, 24) = 0 <0.000004>
+16:56:49.299015 futex(0x612468, FUTEX_WAIT_BITSET_PRIVATE|FUTEX_CLOCK_REALTIME, 0, NULL, ffffffff) = 0 <15.039340>
+16:57:04.338371 sendto(3, "'\206\205\200\0\1\0\1\0\1\0\2\7accessI\4test\2sr\0\0\34\0\1\300\f\0\34\0\1\0\0\0<\0\20\374\0\0\2\0\0\0\n\0\0\0\0\0\0\0\1\300\24\0\2\0\1\0\0\0<\0\5\2ns\300\24\300I\0\34\0\1\0\0\0<\0\20\374\0\0\2\0\0\0\2\0\0\0\0\0\0\0\1\7accessI\4test\2sr\0\377\0\0\1\0\0\0\0\0\"\0\0\374\0\0\2\0\0\0\n\0\0\0\0\0\0\0\1\374\0\0\2\0\0\0\1\322O\250c\233#\202\272", 167, 0, {sa_family=AF_INET6, sin6_port=htons(44425), inet_pton(AF_INET6, "fc00:2:0:4::1", &sin6_addr), sin6_flowinfo=0, sin6_scope_id=0}, 28) = 167 <0.000036>
+16:57:04.338427 futex(0x612468, FUTEX_WAIT_BITSET_PRIVATE|FUTEX_CLOCK_REALTIME, 0, NULL, ffffffff) = 0 <17.962605>
+16:57:22.301045 --- SIGUSR1 {si_signo=SIGUSR1, si_code=SI_TKILL, si_pid=6164, si_uid=0} ---
+16:57:22.301053 rt_sigreturn({mask=[INT]}) = 0 <0.000003>
+16:57:22.301068 madvise(0x7f2dc8830000, 8368128, MADV_DONTNEED) = 0 <0.000005>
+16:57:22.301081 exit(0)                 = ?
+16:57:22.301108 +++ exited with 0 +++

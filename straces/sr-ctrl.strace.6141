@@ -1,0 +1,16 @@
+16:56:39.525163 set_robust_list(0x7fc4a3fff9e0, 24) = 0 <0.000005>
+16:56:39.525203 mmap(0x7fc4a0000000, 67108864, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, -1, 0) = 0x7fc498000000 <0.000007>
+16:56:39.525223 mprotect(0x7fc498000000, 135168, PROT_READ|PROT_WRITE) = 0 <0.000007>
+16:56:39.525245 pipe2([5, 6], O_CLOEXEC) = 0 <0.000009>
+16:56:39.525271 clone(child_stack=0, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fc4a3fff9d0) = 6142 <0.000088>
+16:56:39.525404 close(6)                = 0 <0.000006>
+16:56:39.525425 fcntl(5, F_SETFD, 0)    = 0 <0.000005>
+16:56:39.525442 fstat(5, {st_dev=makedev(0, 10), st_ino=28953, st_mode=S_IFIFO|0600, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=0, st_size=0, st_atime=2017/03/09-16:56:39.524000000, st_mtime=2017/03/09-16:56:39.524000000, st_ctime=2017/03/09-16:56:39.524000000}) = 0 <0.000004>
+16:56:39.525477 read(5, "row,action,bandwidth,delay,destination,dstaddr,proxy,req_id,router,source,status,_version\na429a62d-0fc1-471c-8ee0-562348a07e4a,insert,5,5,accessI.test.sr,\"\"\"fc00:2:0:a::1\"\"\",C,\"\"\"aae53b25-3c5f-45e6-9ffb-749fb77c2277-0\"\"\",A,accessA,0,2523bc4b-4bda-4b83-a913-a114bf21bff1\n", 4096) = 270 <24.771137>
+16:57:04.296658 futex(0x13d1d68, FUTEX_WAKE_PRIVATE, 1) = 1 <0.000008>
+16:57:04.296678 read(5, "", 4096)       = 0 <12.230399>
+16:57:16.527094 close(5)                = 0 <0.000006>
+16:57:16.527110 wait4(6142, [{WIFEXITED(s) && WEXITSTATUS(s) == 1}], 0, NULL) = 6142 <0.000006>
+16:57:16.527136 madvise(0x7fc4a37ff000, 8368128, MADV_DONTNEED) = 0 <0.000005>
+16:57:16.527153 exit(0)                 = ?
+16:57:16.527167 +++ exited with 0 +++

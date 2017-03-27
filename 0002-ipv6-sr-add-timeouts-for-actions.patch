@@ -1,0 +1,344 @@
+From 0a5b7c008cd5c68791326c2bc0f35f0377ed7682 Mon Sep 17 00:00:00 2001
+From: David Lebrun <david.lebrun@uclouvain.be>
+Date: Thu, 5 Jan 2017 10:42:07 +0100
+Subject: [PATCH] ipv6: sr: add timeouts for actions
+
+This patch implements two timeouts for actions: idle and ttl.
+TTL (or simply timeout) is a hard timeout and actions always expire
+after the specified time. Idle timeouts are triggered when the action
+is not triggered for the specified time.
+
+A garbage collector is implemented to collect timed out actions and runs
+at an interval specified by net.ipv6.sysctl.seg6_gc_interval.
+
+Signed-off-by: David Lebrun <david.lebrun@uclouvain.be>
+---
+ include/net/netns/ipv6.h       |   1 +
+ include/net/seg6.h             |   8 +++
+ include/uapi/linux/seg6_genl.h |   4 ++
+ net/ipv6/exthdrs.c             |   4 +-
+ net/ipv6/route.c               |   9 +++
+ net/ipv6/seg6.c                | 140 ++++++++++++++++++++++++++++++++++++++++-
+ 6 files changed, 164 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/netns/ipv6.h b/include/net/netns/ipv6.h
+index de7745e..566596d 100644
+--- a/include/net/netns/ipv6.h
++++ b/include/net/netns/ipv6.h
+@@ -36,6 +36,7 @@ struct netns_sysctl_ipv6 {
+ 	int idgen_retries;
+ 	int idgen_delay;
+ 	int flowlabel_state_ranges;
++	int seg6_gc_interval;
+ };
+ 
+ struct netns_ipv6 {
+diff --git a/include/net/seg6.h b/include/net/seg6.h
+index 54230c1..f267aa1 100644
+--- a/include/net/seg6.h
++++ b/include/net/seg6.h
+@@ -45,6 +45,10 @@ struct seg6_action {
+ 
+ 	struct in6_addr bsid;
+ 	struct in6_addr pre_addr;
++	int idle_timeout;
++	int timeout;
++	unsigned long lastuse;
++	unsigned long instime;
+ };
+ 
+ struct seg6_pernet_data {
+@@ -54,6 +58,9 @@ struct seg6_pernet_data {
+ 	struct rhashtable hmac_infos;
+ #endif
+ 	struct rhashtable actions;
++	struct timer_list gc_timer;
++	spinlock_t gc_lock;
++	unsigned long last_gc;
+ };
+ 
+ static inline struct seg6_pernet_data *seg6_pernet(struct net *net)
+@@ -73,5 +80,6 @@ extern struct seg6_action *seg6_action_lookup(struct net *net,
+ extern int seg6_action_add(struct net *net, struct in6_addr *bsid,
+ 			   struct seg6_action *act);
+ extern int seg6_action_del(struct net *net, struct in6_addr *bsid);
++extern void seg6_start_gc(struct net *net);
+ 
+ #endif
+diff --git a/include/uapi/linux/seg6_genl.h b/include/uapi/linux/seg6_genl.h
+index 09b6d40..d7046cf 100644
+--- a/include/uapi/linux/seg6_genl.h
++++ b/include/uapi/linux/seg6_genl.h
+@@ -14,6 +14,10 @@ enum {
+ 	SEG6_ATTR_ALGID,
+ 	SEG6_ATTR_HMACINFO,
+ 	SEG6_ATTR_BSID,
++	SEG6_ATTR_TIMEOUT,
++	SEG6_ATTR_IDLE_TIMEOUT,
++	SEG6_ATTR_LASTUSE,
++	SEG6_ATTR_INSTIME,
+ 	__SEG6_ATTR_MAX,
+ };
+ 
+diff --git a/net/ipv6/exthdrs.c b/net/ipv6/exthdrs.c
+index fd4b527..777f161 100644
+--- a/net/ipv6/exthdrs.c
++++ b/net/ipv6/exthdrs.c
+@@ -444,8 +444,10 @@ static int ipv6_srh_rcv(struct sk_buff *skb)
+ 
+ 	ip6_route_input(skb);
+ 
+-	if (act)
++	if (act) {
+ 		ipv6_hdr(skb)->daddr = *addr;
++		act->lastuse = jiffies;
++	}
+ 
+ 	if (skb_dst(skb)->error) {
+ 		dst_input(skb);
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 890acac..afd36f8 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -3626,6 +3626,13 @@ struct ctl_table ipv6_route_table_template[] = {
+ 		.mode		=	0644,
+ 		.proc_handler	=	proc_dointvec_ms_jiffies,
+ 	},
++	{
++		.procname	=	"seg6_gc_interval",
++		.data		=	&init_net.ipv6.sysctl.seg6_gc_interval,
++		.maxlen		=	sizeof(int),
++		.mode		=	0644,
++		.proc_handler	=	proc_dointvec_jiffies,
++	},
+ 	{ }
+ };
+ 
+@@ -3649,6 +3656,7 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
+ 		table[7].data = &net->ipv6.sysctl.ip6_rt_mtu_expires;
+ 		table[8].data = &net->ipv6.sysctl.ip6_rt_min_advmss;
+ 		table[9].data = &net->ipv6.sysctl.ip6_rt_gc_min_interval;
++		table[10].data = &net->ipv6.sysctl.seg6_gc_interval;
+ 
+ 		/* Don't export sysctls to unprivileged users */
+ 		if (net->user_ns != &init_user_ns)
+@@ -3712,6 +3720,7 @@ static int __net_init ip6_route_net_init(struct net *net)
+ 	net->ipv6.sysctl.ip6_rt_gc_elasticity = 9;
+ 	net->ipv6.sysctl.ip6_rt_mtu_expires = 10*60*HZ;
+ 	net->ipv6.sysctl.ip6_rt_min_advmss = IPV6_MIN_MTU - 20 - 40;
++	net->ipv6.sysctl.seg6_gc_interval = 30 * HZ;
+ 
+ 	net->ipv6.ip6_rt_gc_expire = 30*HZ;
+ 
+diff --git a/net/ipv6/seg6.c b/net/ipv6/seg6.c
+index 0208d43..f9d8823 100644
+--- a/net/ipv6/seg6.c
++++ b/net/ipv6/seg6.c
+@@ -151,6 +151,8 @@ static const struct nla_policy seg6_genl_policy[SEG6_ATTR_MAX + 1] = {
+ 	[SEG6_ATTR_HMACINFO]		= { .type = NLA_NESTED, },
+ 	[SEG6_ATTR_BSID]		= { .type = NLA_BINARY,
+ 					    .len = sizeof(struct in6_addr) },
++	[SEG6_ATTR_TIMEOUT]		= { .type = NLA_U32, },
++	[SEG6_ATTR_IDLE_TIMEOUT]	= { .type = NLA_U32, },
+ };
+ 
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+@@ -436,6 +438,9 @@ static int seg6_genl_setaction(struct sk_buff *skb, struct genl_info *info)
+ 	struct seg6_pernet_data *sdata;
+ 	struct in6_addr *bsid, *dst;
+ 	struct seg6_action *act;
++	unsigned int idle = 0;
++	unsigned int ttl = 0;
++	unsigned long now;
+ 	int err = 0;
+ 
+ 	sdata = seg6_pernet(net);
+@@ -446,6 +451,18 @@ static int seg6_genl_setaction(struct sk_buff *skb, struct genl_info *info)
+ 	bsid = nla_data(info->attrs[SEG6_ATTR_BSID]);
+ 	dst = nla_data(info->attrs[SEG6_ATTR_DST]);
+ 
++	if (info->attrs[SEG6_ATTR_TIMEOUT])
++		ttl = nla_get_u32(info->attrs[SEG6_ATTR_TIMEOUT]);
++
++	if (info->attrs[SEG6_ATTR_IDLE_TIMEOUT])
++		idle = nla_get_u32(info->attrs[SEG6_ATTR_IDLE_TIMEOUT]);
++
++	if (idle < 0)
++		idle = 0;
++
++	if (ttl < 0)
++		ttl = 0;
++
+ 	mutex_lock(&sdata->lock);
+ 	act = seg6_action_lookup(net, bsid);
+ 
+@@ -470,13 +487,22 @@ static int seg6_genl_setaction(struct sk_buff *skb, struct genl_info *info)
+ 		goto out_unlock;
+ 	}
+ 
++	now = jiffies;
++
+ 	memcpy(&act->bsid, bsid, sizeof(*bsid));
+ 	memcpy(&act->pre_addr, dst, sizeof(*dst));
++	act->instime = now;
++	act->lastuse = now;
++	act->timeout = ttl * HZ;
++	act->idle_timeout = idle * HZ;
+ 
+ 	err = seg6_action_add(net, bsid, act);
+ 	if (err)
+ 		kfree(act);
+ 
++	if (ttl || idle)
++		seg6_start_gc(net);
++
+ out_unlock:
+ 	mutex_unlock(&sdata->lock);
+ 	return err;
+@@ -485,9 +511,19 @@ static int seg6_genl_setaction(struct sk_buff *skb, struct genl_info *info)
+ static int __seg6_action_fill_info(struct seg6_action *act,
+ 				   struct sk_buff *msg)
+ {
++	unsigned long lastuse, instime;
++	unsigned long now = jiffies;
++
++	lastuse = now - act->lastuse;
++	instime = now - act->instime;
++
+ 	if (nla_put(msg, SEG6_ATTR_BSID, sizeof(struct in6_addr), &act->bsid) ||
+ 	    nla_put(msg, SEG6_ATTR_DST, sizeof(struct in6_addr),
+-		    &act->pre_addr))
++		    &act->pre_addr) ||
++	    nla_put_u32(msg, SEG6_ATTR_TIMEOUT, act->timeout / HZ) ||
++	    nla_put_u32(msg, SEG6_ATTR_IDLE_TIMEOUT, act->idle_timeout / HZ) ||
++	    nla_put_u32(msg, SEG6_ATTR_LASTUSE, lastuse / HZ) ||
++	    nla_put_u32(msg, SEG6_ATTR_INSTIME, instime / HZ))
+ 		return -1;
+ 
+ 	return 0;
+@@ -590,6 +626,103 @@ static int seg6_genl_dumpaction(struct sk_buff *skb,
+ 	return ret;
+ }
+ 
++static bool seg6_action_expire(struct seg6_action *act)
++{
++	unsigned long now = jiffies;
++
++	if (act->timeout) {
++		if (time_after_eq(now, act->instime + act->timeout))
++			return true;
++	}
++
++	if (act->idle_timeout) {
++		if (time_after_eq(now, act->lastuse + act->idle_timeout))
++			return true;
++	}
++
++	return false;
++}
++
++static int seg6_clean_actions(struct net *net, int *more)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++	struct rhashtable_iter iter;
++	struct seg6_action *act;
++	int ret;
++
++	rhashtable_walk_enter(&sdata->actions, &iter);
++	ret = rhashtable_walk_start(&iter);
++	if (ret && ret != -EAGAIN)
++		goto done;
++
++	for (;;) {
++		act = rhashtable_walk_next(&iter);
++
++		if (IS_ERR(act)) {
++			if (PTR_ERR(act) == -EAGAIN)
++				continue;
++			ret = PTR_ERR(act);
++			goto done;
++		} else if (!act) {
++			break;
++		}
++
++		if (seg6_action_expire(act))
++			seg6_action_del(net, &act->bsid);
++		else if (act->timeout || act->idle_timeout)
++			(*more)++;
++	}
++
++	ret = 0;
++
++done:
++	rhashtable_walk_stop(&iter);
++	rhashtable_walk_exit(&iter);
++	return ret;
++}
++
++static void seg6_run_gc(struct net *net, bool force)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++	unsigned long now;
++	int more = 0;
++
++	if (force) {
++		spin_lock_bh(&sdata->gc_lock);
++	} else if (!spin_trylock_bh(&sdata->gc_lock)) {
++		mod_timer(&sdata->gc_timer, jiffies + HZ);
++		return;
++	}
++
++	seg6_clean_actions(net, &more);
++
++	now = jiffies;
++	sdata->last_gc = now;
++
++	if (more)
++		mod_timer(&sdata->gc_timer,
++			  round_jiffies(now +
++					net->ipv6.sysctl.seg6_gc_interval));
++	else
++		del_timer(&sdata->gc_timer);
++
++	spin_unlock_bh(&sdata->gc_lock);
++}
++
++static void seg6_gc_timer_cb(unsigned long arg)
++{
++	seg6_run_gc((struct net *)arg, true);
++}
++
++void seg6_start_gc(struct net *net)
++{
++	struct seg6_pernet_data *sdata = seg6_pernet(net);
++
++	if (!timer_pending(&sdata->gc_timer))
++		mod_timer(&sdata->gc_timer,
++			  jiffies + net->ipv6.sysctl.seg6_gc_interval);
++}
++
+ static int __net_init seg6_net_init(struct net *net)
+ {
+ 	struct seg6_pernet_data *sdata;
+@@ -614,6 +747,9 @@ static int __net_init seg6_net_init(struct net *net)
+ 
+ 	rhashtable_init(&sdata->actions, &brht_params);
+ 
++	spin_lock_init(&sdata->gc_lock);
++	setup_timer(&sdata->gc_timer, seg6_gc_timer_cb, (unsigned long)net);
++
+ 	return 0;
+ }
+ 
+@@ -621,6 +757,8 @@ static void __net_exit seg6_net_exit(struct net *net)
+ {
+ 	struct seg6_pernet_data *sdata = seg6_pernet(net);
+ 
++	del_timer_sync(&sdata->gc_timer);
++
+ 	rhashtable_free_and_destroy(&sdata->actions, seg6_free_action, NULL);
+ 
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+-- 
+2.7.3
+
