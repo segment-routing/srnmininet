@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "start_network.sh $1 $2"
+echo "start_network.sh $1 $2 $3"
 
 if [ $# -lt 1 ]; then
 	echo "Please state if you want to clean start or restart the network"
@@ -11,6 +11,7 @@ cd ~/sdnres-sigcomm
 if [ $# -gt 1 ]; then
 	if [ "$2" == "recompile" ] || [ "$2" == "clean" ]; then
 		make clean
+		sudo rm screenlog.0 sr-ctrl/screenlog.0 sr-dnsfwd/screenlog.0 sr-dnsproxy/screenlog.0 sr-routed/screenlog.0 c_tcp.pcap c_udp.pcap
 	fi
 	if [ "$2" == "compile" ] || [ "$2" == "recompile" ]; then
 		make
@@ -32,6 +33,11 @@ if [ "$1" == "restart" ] || [ "$1" == "start" ]; then
 	if ! ip netns pids "A"; then
 		sudo ./SRTest2.topo.sh
 		sleep 2
+	fi
+	# Launch captures
+	if [ "$2" == "debug" ] || [ "$3" == "debug" ]; then
+		sudo ip netns exec "C" screen -d -m -L tcpdump -i any -w c_tcp.pcap tcp
+		sudo ip netns exec "C" screen -d -m -L tcpdump -i any -w c_udp.pcap udp
 	fi
 	# Create the database + population
 	echo "Launch ovsdb server"
