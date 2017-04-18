@@ -11,7 +11,7 @@ cd ~/sdnres-sigcomm
 if [ $# -gt 1 ]; then
 	if [ "$2" == "recompile" ] || [ "$2" == "clean" ]; then
 		make clean
-		sudo rm screenlog.0 sr-ctrl/screenlog.0 sr-dnsfwd/screenlog.0 sr-dnsproxy/screenlog.0 sr-routed/screenlog.0 c_tcp.pcap c_udp.pcap
+		sudo rm screenlog.0 sr-ctrl/screenlog.0 sr-dnsfwd/screenlog.0 sr-dnsproxy/screenlog.0 sr-routed/screenlog.0 c_tcp.pcap c_udp.pcap a_udp.pcap
 	fi
 	if [ "$2" == "compile" ] || [ "$2" == "recompile" ]; then
 		make
@@ -38,6 +38,7 @@ if [ "$1" == "restart" ] || [ "$1" == "start" ]; then
 	if [ "$2" == "debug" ] || [ "$3" == "debug" ]; then
 		sudo ip netns exec "C" screen -d -m -L tcpdump -i any -w c_tcp.pcap tcp
 		sudo ip netns exec "C" screen -d -m -L tcpdump -i any -w c_udp.pcap udp
+		sudo ip netns exec "A" screen -d -m -L tcpdump -i any -w a_udp.pcap udp
 	fi
 	# Create the database + population
 	echo "Launch ovsdb server"
