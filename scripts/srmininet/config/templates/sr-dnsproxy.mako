@@ -1,0 +1,10 @@
+logfile ${node["sr-dnsproxy"].logfile}
+pidfile ${node["sr-dnsproxy"].pidfile}
+ovsdb_client ${node["sr-dnsproxy"].ovsdb_client}
+ovsdb_server ${node["sr-dnsproxy"].ovsdb_server}
+ovsdb_database ${node["sr-dnsproxy"].ovsdb_database}
+router_name ${node["sr-dnsproxy"].router_name}
+max_parallel_queries ${node["sr-dnsproxy"].max_parallel_queries}
+proxy_listen_port ${node["sr-dnsproxy"].proxy_listen_port}
+dns_server_port ${node["sr-dnsproxy"].dns_server_port}
+dns_server ${node["sr-dnsproxy"].dns_server}

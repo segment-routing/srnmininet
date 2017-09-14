@@ -1,0 +1,3 @@
+[submodule "ipmininet"]
+	path = ipmininet
+	url = git@github.com:jadinm/ipmininet.git
