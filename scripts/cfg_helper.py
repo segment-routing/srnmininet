@@ -68,7 +68,7 @@ net_args = parse_key_value_args(args.net_args)
 
 # Add SR components to PATH
 
-pathlist = [os.path.join(os.path.abspath(args.src_dir), comp, comp) for comp in components]
+pathlist = [os.path.join(os.path.abspath(args.src_dir), comp) for comp in components]
 os.environ["PATH"] += os.pathsep + os.pathsep.join(pathlist)
 
 # Start network and add pid file
