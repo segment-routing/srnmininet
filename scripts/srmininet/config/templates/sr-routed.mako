@@ -1,5 +1,4 @@
 logfile ${node["sr-routed"].logfile}
-pidfile ${node["sr-routed"].pidfile}
 ovsdb_client ${node["sr-routed"].ovsdb_client}
 ovsdb_server ${node["sr-routed"].ovsdb_server}
 ovsdb_database ${node["sr-routed"].ovsdb_database}

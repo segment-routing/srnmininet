@@ -110,8 +110,6 @@ class SRNDaemon(Daemon):
 	def build(self):
 		cfg = super(SRNDaemon, self).build()
 
-		cfg.pidfile = self._file('pid')
-
 		cfg.ovsdb_client = self.options.ovsdb_client
 		cfg.ovsdb_server = "%s:[%s]:%s" %(self.options.ovsdb_server_proto,
 		                                  self.options.ovsdb_server_ip,

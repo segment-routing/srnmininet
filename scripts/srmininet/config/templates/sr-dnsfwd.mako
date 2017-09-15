@@ -1,5 +1,4 @@
 logfile ${node["sr-dnsfwd"].logfile}
-pidfile ${node["sr-dnsfwd"].pidfile}
 dns_fifo ${node["sr-dnsfwd"].dns_fifo}
 router_name ${node["sr-dnsfwd"].router_name}
 max_parallel_queries ${node["sr-dnsfwd"].max_parallel_queries}
