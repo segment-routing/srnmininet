@@ -21,12 +21,14 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "..", "/home/vagrant/SRv6"  # TODO , disabled: true
 
   config.vm.provision "shell", inline: <<-SHELL
-    apt-get update
-    apt-get install -y puppet-common
+    if ! which puppet; then
+      apt-get update
+      apt-get install -y puppet-common
+    fi
   SHELL
 
   config.vm.provision "puppet" do |puppet|
-    puppet.options = "--verbose --debug"
+    puppet.options = "--verbose --debug --parser future"
   end
 
   config.ssh.forward_x11 = true
