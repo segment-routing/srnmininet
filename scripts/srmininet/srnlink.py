@@ -8,7 +8,7 @@ from ipmininet.link import TCIntf
 class SRNTCIntf(TCIntf):
 
 	def __init__(self, *args, **kwargs):
-		super(SRNTCIntf, self).__init__(args, kwargs)
+		super(SRNTCIntf, self).__init__(*args, **kwargs)
 		self.delay = kwargs.get("delay", 0)
 
 	def bwCmds(self, htb_burst=None, **params):

@@ -3,7 +3,7 @@ SCRIPTS=scripts/
 CONFIG_HELPER=cfg_helper.py
 
 VIRT_DIR=../srv6-virtenv
-SRC_DIR=../dns-ctrl-uc/sigcomm/sdnres-sigcomm/
+SRC_DIR="../dns-ctrl-uc/sigcomm/sdnres-sigcomm/"
 SUBDIR=$(shell date "+%d-%m-%Y_%Z_%H:%M:%S.%N")/
 LOG_DIR=log/$(SUBDIR)/
 
@@ -25,14 +25,12 @@ start:
 	$(MAKE) stop
 	@echo "Launch everything"
 	mkdir -p $(LOG_DIR)
-	cd $(SCRIPTS) && python $(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR) --pid $(PIDFILE)
+	python $(SCRIPTS)/$(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR) --pid $(PIDFILE)
 
 stop:
 	if [ -f $(PIDFILE) ]; then \
 		kill -s SIGINT $(cat $(PIDFILE)); \
 		rm $(PIDFILE); \
-	else \
-		echo "The SRN is not launched. Use 'make start'"; \
 	fi
 
 restart:

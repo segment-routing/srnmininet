@@ -3,11 +3,11 @@ import errno
 import os
 
 from ipmininet.router import Router
-from ipmininet.router.config import BasicRouterConfig
+from ipmininet.router.config import RouterConfig
 from ipmininet.utils import realIntfList
 
 
-class SRNConfig(BasicRouterConfig):
+class SRNConfig(RouterConfig):
 
 	def __init__(self, node, additional_daemons=(), *args, **kwargs):
 		"""A simple router made of at least an OSPF daemon
@@ -25,15 +25,15 @@ class SRNConfig(BasicRouterConfig):
 		if node.use_v4:
 			d.append(OSPF)
 		if node.use_v6:
-			if self._node.controller:
+			if node.controller:
 				d.extend([SRNOSPF6, SRCtrl])
 			else:
 				d.append(OSPF6)
-			if self._node.access_router:
+			if node.access_router:
 				d.append(SRDNSFwd)
 		d.extend(additional_daemons)
-		super(BasicRouterConfig, self).__init__(node, daemons=d,
-		                                        *args, **kwargs)
+		super(SRNConfig, self).__init__(node, daemons=d,
+		                                *args, **kwargs)
 
 	def build(self):
 		for intf in realIntfList(self._node):
