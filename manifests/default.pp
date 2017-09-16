@@ -20,6 +20,9 @@ $quagga_source_path = "${quagga_root_dir}/quagga-${quagga_version}"
 $quagga_download_path = "${quagga_source_path}.tar.gz"
 $quagga_path = "/home/vagrant/quagga"
 
+$iproute_cwd = "/home/vagrant/SRv6/iproute2"
+$iproute_configure = "/home/vagrant/SRv6/dns-ctrl-resources/patches/configure-iproute2"
+
 # Remove useless warnings
 Package { allow_virtual => true }
 
@@ -51,6 +54,11 @@ package { 'mako':
   ensure => installed,
   provider => 'pip',
 }
+package { 'six':
+  require => Package['python-pip'],
+  ensure => installed,
+  provider => 'pip',
+}
 
 # Networking
 package { 'wireshark':
@@ -66,6 +74,10 @@ package { 'tcpdump':
   ensure => installed,
 }
 package { 'bridge-utils':
+  require => Exec['apt-update'],
+  ensure => installed,
+}
+package { 'mininet':
   require => Exec['apt-update'],
   ensure => installed,
 }
@@ -119,6 +131,10 @@ package { 'libc-ares-dev':
   require => Exec['apt-update'],
   ensure => installed,
 }
+package { 'cmake':
+  require => Exec['apt-update'],
+  ensure => installed,
+}
 
 # Miscellaneous
 package { 'xterm':
@@ -156,7 +172,7 @@ exec { 'ovsdb-download':
               tar -xvzf ${ovsdb_download_path} -C ${ovsdb_root_dir};"
 }
 exec { 'ovsdb':
-  require => [ Exec['apt-update'], Exec['ovsdb-download'] ] + $compilation,
+  require => [ Exec['apt-update'], Exec['ovsdb-download'], Package['six'] ] + $compilation,
   cwd => $ovsdb_source_path,
   creates => $ovsdb_path,
   path => "${default_path}:${ovsdb_source_path}",
@@ -209,4 +225,16 @@ exec { 'quagga':
               echo \"# quagga binaries\" >> /root/.bashrc &&\
               echo \"PATH=\\\"${quagga_path}/bin:${quagga_path}/sbin:\\\$PATH\\\"\" >> /root/.bashrc &&\
               PATH=${quagga_path}/sbin:${quagga_path}/bin:\$PATH;",
+}
+
+exec { 'iproute2':
+  require => [ Exec['apt-update'] ] + $compilation,
+  creates => "/home/vagrant/.newiproute",
+  cwd => $iproute_cwd,
+  path => "${default_path}:${iproute_cwd}",
+  command => "cp ${iproute_configure} ${iproute_cwd}/configure &&\
+              configure &&\
+              make &&\
+              make install &&\
+              touch /home/vagrant/.newiproute;",
 }

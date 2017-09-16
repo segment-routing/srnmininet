@@ -18,7 +18,10 @@ Vagrant.configure("2") do |config|
   # the path on the host to the actual folder. The second argument is
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
-  config.vm.synced_folder "..", "/home/vagrant/SRv6"  # TODO , disabled: true
+  config.vm.synced_folder "..", "/home/vagrant/SRv6"
+
+  config.vm.synced_folder "~/.vim", "/home/vagrant/.vim"
+  config.vm.provision "file", source: "~/.vimrc", destination: "$HOME/.vimrc"
 
   config.vm.provision "shell", inline: <<-SHELL
     if ! which puppet; then
