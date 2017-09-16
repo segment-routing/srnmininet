@@ -2,4 +2,5 @@
 .vagrant/
 log/
 .idea/
+*.pyc
 
