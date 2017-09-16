@@ -1,7 +1,7 @@
 
 import os
 
-from iptopo import IPTopo
+from ipmininet.iptopo import IPTopo
 
 
 class SRNTopo(IPTopo):

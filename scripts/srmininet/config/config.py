@@ -140,34 +140,6 @@ class SRNDaemon(Daemon):
 		super(SRNDaemon, self).set_defaults(defaults)
 
 
-class SRCtrl(SRNDaemon):
-	NAME = 'sr-ctrl'
-	DEPENDS = (OVSDB, SRNOSPF6, SRDNSProxy)
-
-	def build(self):
-		cfg = super(SRCtrl, self).build()
-
-		cfg.rules_file = self.options.rules_file
-		cfg.worker_threads = self.options.worker_threads
-		cfg.req_queue_size = self.options.req_queue_size
-		cfg.providers = " ".join(self.options.providers)
-
-		return cfg
-
-	def set_defaults(self, defaults):
-		""":param rules_file: The files with operator's rules
-		   :param worker_threads: The number of workers handling requests
-		   :param req_queue_size: The size of the request queue
-		   :param providers: The list of providers with their supplied PA"""
-
-		defaults.rules_file = "config/rules.conf"
-		defaults.worker_threads = 1
-		defaults.req_queue_size = 16
-		defaults.providers = ()
-
-		super(SRCtrl, self).set_defaults(defaults)
-
-
 class SRDNSProxy(SRNDaemon):
 	NAME = 'sr-dnsproxy'
 	DEPENDS = (OVSDB, Named)
@@ -195,6 +167,34 @@ class SRDNSProxy(SRNDaemon):
 		defaults.proxy_listen_port = 2000
 
 		super(SRDNSProxy, self).set_defaults(defaults)
+
+
+class SRCtrl(SRNDaemon):
+	NAME = 'sr-ctrl'
+	DEPENDS = (OVSDB, SRNOSPF6, SRDNSProxy)
+
+	def build(self):
+		cfg = super(SRCtrl, self).build()
+
+		cfg.rules_file = self.options.rules_file
+		cfg.worker_threads = self.options.worker_threads
+		cfg.req_queue_size = self.options.req_queue_size
+		cfg.providers = " ".join(self.options.providers)
+
+		return cfg
+
+	def set_defaults(self, defaults):
+		""":param rules_file: The files with operator's rules
+		   :param worker_threads: The number of workers handling requests
+		   :param req_queue_size: The size of the request queue
+		   :param providers: The list of providers with their supplied PA"""
+
+		defaults.rules_file = "config/rules.conf"
+		defaults.worker_threads = 1
+		defaults.req_queue_size = 16
+		defaults.providers = ()
+
+		super(SRCtrl, self).set_defaults(defaults)
 
 
 class SRRouted(SRNDaemon):

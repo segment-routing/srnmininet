@@ -6,8 +6,8 @@ from mininet.log import LEVELS, lg
 
 import ipmininet
 
-from .srmininet.square_axa import SquareAxA
-from .srmininet.srnnet import SRNNet
+from srmininet.square_axa import SquareAxA
+from srmininet.srnnet import SRNNet
 
 topo_classes = [SquareAxA]
 TOPOS = {topo.__name__:topo for topo in topo_classes}
@@ -15,7 +15,6 @@ TOPOS = {topo.__name__:topo for topo in topo_classes}
 components = ["sr-ctrl", "sr-routed", "sr-dnsproxy", "sr-dnsfwd"]
 
 # Argument parsing
-# TODO Add log directory for all the routers
 
 if len(sys.argv) < 1 or sys.argv[1] not in TOPOS:
 	print("%s TOPOLOGY", sys.argv[0])
