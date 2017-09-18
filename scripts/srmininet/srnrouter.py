@@ -52,13 +52,24 @@ def mkdir_p(path):
 
 
 class SRNRouter(Router):
-	def __init__(self, name, config=SRNConfig, controller=False,
-	             access_router=False, sr_controller=None, schema_tables=None, cwd="/tmp", *args, **kwargs):
-		self.controller = controller
-		self.access_router = access_router
-		self.sr_controller = sr_controller
-		self.schema_tables = schema_tables
-		print("ON THE ROUTER %s" % str(args))
-		print("ON THE ROUTER %s" % str(kwargs))
+
+	def __init__(self, name, config=SRNConfig, cwd="/tmp", *args, **kwargs):
+
 		super(SRNRouter, self).__init__(name, config=config, cwd=cwd, *args, **kwargs)
 		mkdir_p(cwd)
+
+	@property
+	def controller(self):
+		return self.get('controller', False)
+
+	@property
+	def access_router(self):
+		return self.get('access_router', False)
+
+	@property
+	def sr_controller(self):
+		return self.get('sr_controller', None)
+
+	@property
+	def schema_tables(self):
+		return self.get('schema_tables', None)

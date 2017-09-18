@@ -65,6 +65,8 @@ class SquareAxA(SRNTopo):
 		self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0], self.grid[-1]),
 		                             sr_controller=self.controllers[0], schema_tables=self.schema_tables))
 
+		super(SquareAxA, self).build(*args, **kwargs)
+
 	def addLink(self, node1, node2, **opts):
 
 		default_params1 = {"bw": 100, "delay": 1.00}
