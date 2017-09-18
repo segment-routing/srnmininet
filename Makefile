@@ -24,7 +24,6 @@ clean:
 start:
 	$(MAKE) stop
 	@echo "Launch everything"
-	mkdir -p $(LOG_DIR)
 	python $(SCRIPTS)/$(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR) --pid $(PIDFILE)
 
 stop:
