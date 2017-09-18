@@ -19,14 +19,10 @@ class SRCtrlDomain(Overlay):
 
 	def __init__(self, access_routers, sr_controller, schema_tables):
 
-		nodes = list(access_routers)
-		if sr_controller not in nodes:
-			nodes.append(sr_controller)
-		print("HEEEEEEEEEEERE")
-		print("params = %s" % schema_tables)
-
-		super(SRCtrlDomain, self).__init__(nodes=nodes,
+		super(SRCtrlDomain, self).__init__(nodes=access_routers,
 		                                   nprops={"sr_controller": sr_controller, "schema_tables": schema_tables})
+		if sr_controller not in self.nodes:
+			self.add_node(sr_controller)
 
 
 class OVSDB(Daemon):
@@ -46,7 +42,7 @@ class OVSDB(Daemon):
 
 		cfg.version = self.options.version
 		cfg.database = self.options.database
-		cfg.schema_tables = json.dumps(self.options.schema_tables)
+		cfg.schema_tables = json.dumps(self.options.schema_tables, indent=4)
 
 		return cfg
 
@@ -56,11 +52,11 @@ class OVSDB(Daemon):
 		return '{name} create {database} {schema}' \
 			.format(name='ovsdb-tool',
                     log=self.options.logfile,
-		            database=self.options.database,
-		            schema=self.template_filename)
+		            database=os.path.join(self._node.cwd, self.options.database),
+		            schema=self.cfg_filename)
 
 	def set_defaults(self, defaults):
-		""":param database: the command to run OVSDB client executable
+		""":param database: the database name
 		   :param remotes: the list of <protocol>:[<ip>]:<port> specs to use to communicate to the OVSDB server
 		   :param schema_tables: the ovsdb table descriptions
 		   :param version: the version of the ovsdb table descriptions"""
