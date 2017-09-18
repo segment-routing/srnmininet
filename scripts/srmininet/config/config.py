@@ -1,18 +1,32 @@
 
 import heapq
+import json
 import mininet.clean
+import os
 import sys
 from mininet.log import lg
 
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon
+from ipmininet.router.config.utils import template_lookup
 from ipmininet.utils import realIntfList
+
+template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'templates'))
 
 
 class SRCtrlDomain(Overlay):
-	def __init__(self, access_routers, sr_controller):
-		super(SRCtrlDomain, self).__init__(nodes=access_routers, nprops={"sr_controller": sr_controller})
+
+	def __init__(self, access_routers, sr_controller, schema_tables):
+
+		nodes = list(access_routers)
+		if sr_controller not in nodes:
+			nodes.append(sr_controller)
+		print("HEEEEEEEEEEERE")
+		print("params = %s" % schema_tables)
+
+		super(SRCtrlDomain, self).__init__(nodes=nodes,
+		                                   nprops={"sr_controller": sr_controller, "schema_tables": schema_tables})
 
 
 class OVSDB(Daemon):
@@ -30,42 +44,32 @@ class OVSDB(Daemon):
 	def build(self):
 		cfg = super(OVSDB, self).build()
 
-		cfg.pidfile = self._file('pid')
-
-		cfg.ovsdb_client = self.options.ovsdb_client
-		cfg.ovsdb_server = "%s:[%s]:%s" %(self.options.ovsdb_server_proto,
-		                                  self.options.ovsdb_server_ip,
-		                                  self.options.ovsdb_server_port)
-		cfg.ovsdb_database = self.options.ovsdb_database
+		cfg.version = self.options.version
+		cfg.database = self.options.database
+		cfg.schema_tables = json.dumps(self.options.schema_tables)
 
 		return cfg
 
 	@property
 	def dry_run(self):
 		"""Creates the database file from the schema"""
-		return '{name} --log-file={log} create {database} {schema}' \
+		return '{name} create {database} {schema}' \
 			.format(name='ovsdb-tool',
                     log=self.options.logfile,
 		            database=self.options.database,
-		            schema=self.options.schema)
+		            schema=self.template_filename)
 
 	def set_defaults(self, defaults):
 		""":param database: the command to run OVSDB client executable
 		   :param remotes: the list of <protocol>:[<ip>]:<port> specs to use to communicate to the OVSDB server
-		   :param schema: the address to communicate to the OVSDB server"""
+		   :param schema_tables: the ovsdb table descriptions
+		   :param version: the version of the ovsdb table descriptions"""
 
 		defaults.database = "SR_test"
 		defaults.remotes = ["tcp:[%s]:6640" % itf.ip6 for itf in self._node.intfList()]
-		defaults.schema = self._filepath("sr.ovsschema")
+		defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
+		defaults.version = "0.0.1"
 		super(OVSDB, self).set_defaults(defaults)
-
-	def render(self, cfg, **kwargs):
-		"""No template for the config file"""
-		return None
-
-	def write(self, cfg):
-		"""No template for the config file"""
-		pass
 
 
 class SRNZebra(Zebra):

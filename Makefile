@@ -29,7 +29,7 @@ start:
 
 stop:
 	if [ -f $(PIDFILE) ]; then \
-		kill -s SIGINT $(cat $(PIDFILE)); \
+		kill -s INT $(shell cat $(PIDFILE)); \
 		rm $(PIDFILE); \
 	fi
 

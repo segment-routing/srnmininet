@@ -1,7 +1,7 @@
 import argparse
+import json
 import os
 import signal
-import sys
 from mininet.log import LEVELS, lg
 
 import ipmininet
@@ -66,7 +66,13 @@ net_args = parse_key_value_args(args.net_args)
 
 pathlist = [os.path.join(os.path.abspath(args.src_dir), comp) for comp in components]
 os.environ["PATH"] += os.pathsep + os.pathsep.join(pathlist)
-print(os.environ["PATH"])
+
+# Give the database description to the topology
+
+with open(os.path.join(args.src_dir, "sr.ovsschema"), "r") as fileobj:
+	full_schema = json.load(fileobj)
+	print(str(full_schema))
+	topo_args["schema_tables"] = full_schema["tables"]
 
 # Start network and add pid file
 
@@ -74,7 +80,7 @@ net = SRNNet(topo=TOPOS[args.topo](**topo_args), **net_args)
 
 pidfile = args.pid
 with open(pidfile, "w") as fileobj:
-	fileobj.write(os.getpid())
+	fileobj.write(str(os.getpid()))
 
 
 def handler(signum, frame):

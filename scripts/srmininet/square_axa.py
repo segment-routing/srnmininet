@@ -17,7 +17,7 @@ class SquareAxA(SRNTopo):
 	In this example, self.square_size == 3
 	"""
 
-	def __init__(self, controller_idx=3, square_size=3, *args, **kwargs):
+	def __init__(self, controller_idx=3, square_size=3, schema_tables=None, *args, **kwargs):
 		""":param controller_idx: The index of routers that will run the SR controller
 		   :param square_size: The size of the squares of routers (> 0)"""
 
@@ -39,6 +39,7 @@ class SquareAxA(SRNTopo):
 		del self.grid[self.square_size**2:]
 
 		controller = self.grid[controller_idx]
+		self.schema_tables = schema_tables if schema_tables else {}
 
 		super(SquareAxA, self).__init__(controller, *args, **kwargs)
 
@@ -61,7 +62,8 @@ class SquareAxA(SRNTopo):
 		self.addLink(self.grid[0], client)
 		self.addLink(self.grid[-1], server)
 
-		self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0], self.grid[-1]), sr_controller=self.controllers[0]))
+		self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0], self.grid[-1]),
+		                             sr_controller=self.controllers[0], schema_tables=self.schema_tables))
 
 	def addLink(self, node1, node2, **opts):
 
