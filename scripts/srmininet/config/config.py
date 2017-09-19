@@ -6,6 +6,7 @@ import os
 import sys
 from mininet.log import lg
 
+from mako import exceptions as mako_exceptions
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon
@@ -17,18 +18,24 @@ template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'temp
 
 class SRCtrlDomain(Overlay):
 
-	def __init__(self, access_routers, sr_controller, schema_tables):
+	def __init__(self, access_routers, sr_controller, schema_tables):  # TODO Add marker for access router
 
 		super(SRCtrlDomain, self).__init__(nodes=access_routers,
 		                                   nprops={"sr_controller": sr_controller, "schema_tables": schema_tables})
 		if sr_controller not in self.nodes:
 			self.add_node(sr_controller)
 
+		for n in access_routers:
+			self.set_node_property(n, "access_router", True)
+			self.set_node_property(n, "sr_controller", sr_controller)
+		self.set_node_property(sr_controller, "schema_tables", schema_tables)
+
 
 class OVSDB(Daemon):
 	NAME = 'ovsdb-server'
 	PRIO = 0
 
+	@property
 	def startup_line(self):
 		return '{name} {database} --remote={remotes} --pidfile={pid} --logfile={log}' \
 			.format(name=self.NAME,
@@ -88,6 +95,7 @@ class Named(Daemon):
 	NAME = 'named'
 	PRIO = 0
 
+	@property
 	def startup_line(self):
 		return '{name} -c {cfg} -f -u root' \
 			.format(name=self.NAME,
@@ -102,10 +110,11 @@ class Named(Daemon):
 
 class SRNDaemon(Daemon):
 
+	@property
 	def startup_line(self):
 		return '{name} {cfg}' \
-			.format(name=self.NAME,
-		            cfg=self.cfg_filename)
+			   .format(name=self.NAME,
+		               cfg=self.cfg_filename)
 
 	def build(self):
 		cfg = super(SRNDaemon, self).build()
@@ -115,6 +124,7 @@ class SRNDaemon(Daemon):
 		                                  self.options.ovsdb_server_ip,
 		                                  self.options.ovsdb_server_port)
 		cfg.ovsdb_database = self.options.ovsdb_database
+		cfg.ntransacts = self.options.ntransacts
 
 		return cfg
 
@@ -130,13 +140,14 @@ class SRNDaemon(Daemon):
 		   :param ovsdb_server_ip: the address to communicate to the OVSDB server
 		   :param ovsdb_server_port: the port to communicate to the OVSDB server
 		   :param ovsdb_database: the name of the database to synchronize
-		   :param src_dir: the source directory of SRN components"""
+		   :param ntransacts: the number of threads sending transaction RPCs to OVSDB"""
 
 		defaults.ovsdb_client = "ovsdb-client"
 		defaults.ovsdb_server_proto = "tcp"
 		defaults.ovsdb_server_ip = "::1"
 		defaults.ovsdb_server_port = "6640"
 		defaults.ovsdb_database = "SR_test"
+		defaults.ntransacts = 1
 		super(SRNDaemon, self).set_defaults(defaults)
 
 
@@ -148,7 +159,7 @@ class SRDNSProxy(SRNDaemon):
 		cfg = super(SRDNSProxy, self).build()
 
 		cfg.router_name = self._node.name
-		cfg.max_parallel_queries = self.options.max_parallel_queries
+		cfg.max_queries = self.options.max_queries
 
 		cfg.dns_server = "::1"  # Acceptable since "Named" is a required daemon
 		cfg.dns_server_port = self.options.dns_server_port
@@ -158,11 +169,11 @@ class SRDNSProxy(SRNDaemon):
 		return cfg
 
 	def set_defaults(self, defaults):
-		""":param max_parallel_queries: The max number of pending DNS queries
+		""":param max_queries: The max number of pending DNS queries
 		   :param dns_server_port: Port number of the DNS server
 		   :param proxy_listen_port: Listening port of this daemon for external requests"""
 
-		defaults.max_parallel_queries = 500
+		defaults.max_queries = 500
 		defaults.dns_server_port = 53
 		defaults.proxy_listen_port = 2000
 
@@ -176,25 +187,53 @@ class SRCtrl(SRNDaemon):
 	def build(self):
 		cfg = super(SRCtrl, self).build()
 
-		cfg.rules_file = self.options.rules_file
+		cfg.rules_file = self.rules_cfg_filename
 		cfg.worker_threads = self.options.worker_threads
-		cfg.req_queue_size = self.options.req_queue_size
-		cfg.providers = " ".join(self.options.providers)
+		cfg.req_buffer_size = self.options.req_buffer_size
 
 		return cfg
 
 	def set_defaults(self, defaults):
-		""":param rules_file: The files with operator's rules
-		   :param worker_threads: The number of workers handling requests
-		   :param req_queue_size: The size of the request queue
+		""":param worker_threads: The number of workers handling requests
+		   :param req_buffer_size: The size of the request buffer
 		   :param providers: The list of providers with their supplied PA"""
 
-		defaults.rules_file = "config/rules.conf"
 		defaults.worker_threads = 1
-		defaults.req_queue_size = 16
-		defaults.providers = ()
+		defaults.req_buffer_size = 16
 
 		super(SRCtrl, self).set_defaults(defaults)
+
+	@property
+	def rules_cfg_filename(self):
+		"""Return the filename in which this daemon rules should be stored"""
+		return self._filepath("%s-rules.cfg" % self.NAME)
+
+	@property
+	def rules_template_filename(self):
+		return "%s-rules.mako" % self.NAME
+
+	def render(self, cfg, **kwargs):
+
+		cfg_content = [super(SRCtrl, self).render(cfg, **kwargs)]
+
+		self.files.append(self.rules_cfg_filename)
+		lg.debug('Generating %s\n' % self.rules_cfg_filename)
+		try:
+			cfg_content.append(template_lookup.get_template(self.rules_template_filename).render(node=cfg, **kwargs))
+			return cfg_content
+		except:
+			# Display template errors in a less cryptic way
+			lg.error('Couldn''t render a config file(',
+			          self.template_filename, ')')
+			lg.error(mako_exceptions.text_error_template().render())
+			raise ValueError('Cannot render the rules configuration [%s: %s]' % (
+				self._node.name, self.NAME))
+
+	def write(self, cfg):
+
+		super(SRCtrl, self).write(cfg[0])
+		with open(self.rules_cfg_filename, 'w') as f:
+			f.write(cfg[1])
 
 
 class SRRouted(SRNDaemon):
@@ -237,12 +276,13 @@ class SRRouted(SRNDaemon):
 			return "::1"
 
 		visited = set()
-		to_visit = heapq.heapify([(SRRouted.cost_intf(intf), intf) for intf in realIntfList(base)])
+		to_visit = [(SRRouted.cost_intf(intf), intf) for intf in realIntfList(base)]
+		heapq.heapify(to_visit)
 
 		# Explore all interfaces in base ASN recursively, until we find one
 		# connected to the SRN controller.
 		while to_visit:
-			cost, intf = to_visit.heappop()
+			cost, intf = heapq.heappop(to_visit)
 			if intf in visited:
 				continue
 			visited.add(intf)
@@ -252,7 +292,7 @@ class SRRouted(SRNDaemon):
 					return ip if ip else peer_intf.ip6
 				elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
 					for x in realIntfList(peer_intf.node):
-						to_visit.heappush((cost + SRRouted.cost_intf(x), x))
+						heapq.heappush(to_visit, (cost + SRRouted.cost_intf(x), x))
 		return None
 
 
@@ -264,7 +304,7 @@ class SRDNSFwd(SRNDaemon):
 		cfg = super(SRDNSFwd, self).build()
 
 		cfg.router_name = self._node.name
-		cfg.max_parallel_queries = self.options.max_parallel_queries
+		cfg.max_queries = self.options.max_queries
 
 		# Valid since SRRouted will be started faster
 		cfg.dns_fifo = self._node.config.daemon(SRRouted.NAME).options.dns_fifo
@@ -285,11 +325,11 @@ class SRDNSFwd(SRNDaemon):
 		return cfg
 
 	def set_defaults(self, defaults):
-		""":param max_parallel_queries: The max number of pending DNS queries
+		""":param max_queries: The max number of pending DNS queries
 		   :param dns_server_port: Port number of the DNS server
 		   :param proxy_listen_port: Listening port of this daemon for external requests"""
 
-		defaults.max_parallel_queries = 500
+		defaults.max_queries = 500
 		defaults.proxy_listen_port = 2000
 		defaults.dnsfwd_listen_port = 2000
 

@@ -1,10 +1,10 @@
 import argparse
 import json
 import os
-import signal
 from mininet.log import LEVELS, lg
 
 import ipmininet
+from ipmininet.cli import IPCLI
 
 from srmininet.square_axa import SquareAxA
 from srmininet.srnnet import SRNNet
@@ -32,8 +32,6 @@ def parse_args():
 	parser.add_argument('--log-dir', help='Logging directory root',
 	                    default='')
 	parser.add_argument('--src-dir', help='Source directory root of SR components',
-	                    default='')
-	parser.add_argument('--pid', help='Path to the file that will contain the pid of this process',
 	                    default='')
 	return parser.parse_args()
 
@@ -74,20 +72,8 @@ with open(os.path.join(args.src_dir, "sr.ovsschema"), "r") as fileobj:
 	print(str(full_schema))
 	topo_args["schema_tables"] = full_schema["tables"]
 
-# Start network and add pid file
-
+# Start network
 net = SRNNet(topo=TOPOS[args.topo](**topo_args), **net_args)
-
-pidfile = args.pid
-with open(pidfile, "w") as fileobj:
-	fileobj.write(str(os.getpid()))
-
-
-def handler(signum, frame):
-	net.stop()
-	os.unlink(pidfile)
-
-
 net.start()
-
-signal.signal(signal.SIGINT, handler)
+IPCLI(net)
+net.stop()

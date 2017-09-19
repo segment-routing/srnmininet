@@ -43,7 +43,7 @@ class SRNConfig(RouterConfig):
 
 def mkdir_p(path):
 	try:
-		os.makedirs(path)
+		os.makedirs(path, mode=0777)
 	except OSError as exc:
 		if exc.errno == errno.EEXIST and os.path.isdir(path):
 			pass
