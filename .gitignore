@@ -3,5 +3,4 @@
 log/
 .idea/
 *.pyc
-*.pid
 
