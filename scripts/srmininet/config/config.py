@@ -107,6 +107,41 @@ class Named(Daemon):
 			.format(name='named-checkconf',
 		            cfg=self.cfg_filename)
 
+	def set_defaults(self, defaults):
+		super(Named, self).set_defaults(defaults)
+
+	@property
+	def zone_cfg_filename(self):
+		"""Return the filename in which this daemon rules should be stored"""
+		return self._filepath("test.sr.zone")
+
+	@property
+	def zone_template_filename(self):
+		return "test.sr.mako"
+
+	def render(self, cfg, **kwargs):
+
+		cfg_content = [super(Named, self).render(cfg, **kwargs)]
+
+		self.files.append(self.zone_cfg_filename)
+		lg.debug('Generating %s\n' % self.zone_cfg_filename)
+		try:
+			cfg_content.append(template_lookup.get_template(self.zone_template_filename).render(node=cfg, **kwargs))
+			return cfg_content
+		except:
+			# Display template errors in a less cryptic way
+			lg.error('Couldn''t render a config file(',
+			          self.zone_template_filename, ')')
+			lg.error(mako_exceptions.text_error_template().render())
+			raise ValueError('Cannot render the DNS zone configuration [%s: %s]' % (
+				self._node.name, self.NAME))
+
+	def write(self, cfg):
+
+		super(Named, self).write(cfg[0])
+		with open(self.zone_cfg_filename, 'w') as f:
+			f.write(cfg[1])
+
 
 class SRNDaemon(Daemon):
 
@@ -153,7 +188,7 @@ class SRNDaemon(Daemon):
 
 class SRDNSProxy(SRNDaemon):
 	NAME = 'sr-dnsproxy'
-	DEPENDS = (OVSDB, Named)
+	DEPENDS = (Named, OVSDB)
 
 	def build(self):
 		cfg = super(SRDNSProxy, self).build()
@@ -182,7 +217,7 @@ class SRDNSProxy(SRNDaemon):
 
 class SRCtrl(SRNDaemon):
 	NAME = 'sr-ctrl'
-	DEPENDS = (OVSDB, SRNOSPF6, SRDNSProxy)
+	DEPENDS = (OVSDB, SRNOSPF6, SRDNSProxy, Named)
 
 	def build(self):
 		cfg = super(SRCtrl, self).build()
@@ -224,7 +259,7 @@ class SRCtrl(SRNDaemon):
 		except:
 			# Display template errors in a less cryptic way
 			lg.error('Couldn''t render a config file(',
-			          self.template_filename, ')')
+			          self.rules_template_filename, ')')
 			lg.error(mako_exceptions.text_error_template().render())
 			raise ValueError('Cannot render the rules configuration [%s: %s]' % (
 				self._node.name, self.NAME))
