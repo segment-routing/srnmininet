@@ -31,6 +31,9 @@ router ospf6
   % for itf in node.srnospf6d.interfaces:
   interface ${itf.name} area ${itf.area}
   % endfor
+  %if node.srnospf6d.ovsdb_adv:
+  ovsdb_adv ${node.srnospf6d.ovsdb_proto} ${node.srnospf6d.ovsdb_ip6} ${node.srnospf6d.ovsdb_port} ${node.srnospf6d.ovsdb_database}
+  %endif
 
   <%block name="router"/>
 !

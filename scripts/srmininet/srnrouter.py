@@ -26,9 +26,9 @@ class SRNConfig(RouterConfig):
 			d.append(OSPF)
 		if node.use_v6:
 			if node.controller:
-				d.extend([SRNOSPF6, SRCtrl])
+				d.extend([(SRNOSPF6, {'ovsdb_adv': True}), SRCtrl])
 			else:
-				d.append(OSPF6)
+				d.append(SRNOSPF6)
 			if node.access_router:
 				d.append(SRDNSFwd)
 		d.extend(additional_daemons)

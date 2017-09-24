@@ -88,7 +88,31 @@ class SRNOSPF6(OSPF6):
 	It enables communication with OVSDB
 	"""
 	NAME = 'srnospf6d'
-	DEPENDS = (SRNZebra, OVSDB)
+	DEPENDS = (SRNZebra,)
+
+	def build(self):
+		cfg = super(SRNOSPF6, self).build()
+
+		cfg.ovsdb_adv = self.options.ovsdb_adv
+		cfg.ovsdb_database = self.options.ovsdb_database
+		cfg.ovsdb_proto = self.options.ovsdb_proto
+		cfg.ovsdb_ip6 = self.options.ovsdb_ip6
+		cfg.ovsdb_port = self.options.ovsdb_port
+
+		return cfg
+
+	def set_defaults(self, defaults):
+		""":param ovsdb_adv: whether this daemon updates the database whenever the network state changes.
+		   :param ovsdb_database: the database name
+		   :param ovsdb_proto: the list of <protocol>:[<ip>]:<port> specs to use to communicate to the OVSDB server
+		   :param ovsdb_port: the version of the ovsdb table descriptions"""
+
+		defaults.ovsdb_adv = False
+		defaults.ovsdb_database = "SR_test"
+		defaults.ovsdb_proto = "tcp"
+		defaults.ovsdb_ip6 = "::1"
+		defaults.ovsdb_port = "6640"
+		super(SRNOSPF6, self).set_defaults(defaults)
 
 
 class Named(Daemon):
