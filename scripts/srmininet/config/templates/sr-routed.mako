@@ -1,4 +1,3 @@
-logfile "${node["sr-routed"].logfile}"
 ovsdb_client "${node["sr-routed"].ovsdb_client}"
 ovsdb_server "${node["sr-routed"].ovsdb_server}"
 ovsdb_database "${node["sr-routed"].ovsdb_database}"

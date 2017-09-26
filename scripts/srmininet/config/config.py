@@ -100,6 +100,8 @@ class SRNOSPF6(OSPF6):
 		cfg.ovsdb_proto = self.options.ovsdb_proto
 		cfg.ovsdb_ip6 = self.options.ovsdb_ip6
 		cfg.ovsdb_port = self.options.ovsdb_port
+		if not self.options.logobj:
+			self.options.logobj = open(self.options.logfile + ".stdout", "a+")
 
 		return cfg
 
@@ -115,6 +117,12 @@ class SRNOSPF6(OSPF6):
 		defaults.ovsdb_ip6 = "::1"
 		defaults.ovsdb_port = "6640"
 		super(SRNOSPF6, self).set_defaults(defaults)
+
+	def cleanup(self):
+		if self.options.logobj:
+			self.options.logobj.close()
+
+		super(SRNOSPF6, self).cleanup()
 
 
 class Named(Daemon):
@@ -187,6 +195,9 @@ class SRNDaemon(Daemon):
 		cfg.ovsdb_database = self.options.ovsdb_database
 		cfg.ntransacts = self.options.ntransacts
 
+		if not self.options.logobj:
+			self.options.logobj = open(self.options.logfile, "a+")
+
 		return cfg
 
 	@property
@@ -210,6 +221,12 @@ class SRNDaemon(Daemon):
 		defaults.ovsdb_database = "SR_test"
 		defaults.ntransacts = 1
 		super(SRNDaemon, self).set_defaults(defaults)
+
+	def cleanup(self):
+		if self.options.logobj:
+			self.options.logobj.close()
+
+		super(SRNDaemon, self).cleanup()
 
 
 class SRDNSProxy(SRNDaemon):

@@ -1,6 +1,10 @@
 
 import errno
+import mininet.clean
 import os
+import sys
+import time
+from mininet.log import lg
 
 from ipmininet.router import Router
 from ipmininet.router.config import RouterConfig
@@ -15,7 +19,6 @@ class SRNConfig(RouterConfig):
 		:param additional_daemons: Other daemons that should be used"""
 		# Importing here to avoid circular import
 		from ipmininet.router.config.ospf import OSPF
-		from ipmininet.router.config.ospf6 import OSPF6
 		from .config import SRNOSPF6, SRCtrl, SRDNSFwd
 		# We don't want any zebra-specific settings, so we rely on the OSPF/OSPF6
 		# DEPENDS list for that daemon to run it with default settings
@@ -73,3 +76,34 @@ class SRNRouter(Router):
 	@property
 	def schema_tables(self):
 		return self.get('schema_tables', None)
+
+	def start(self):
+		"""Start the router: Configure the daemons, set the relevant sysctls,
+		and fire up all needed processes"""
+		self.cmd('ip', 'link', 'set', 'dev', 'lo', 'up')
+		# Build the config
+		self.config.build()
+		# Check them
+		err_code = False
+		for d in self.config.daemons:
+			out, err, code = self._processes.pexec(*d.dry_run.split(' '))
+			err_code = err_code or code
+			if code:
+				lg.error(d.NAME, 'configuration check failed ['
+				                 'rcode:', str(code), ']\n'
+				                                      'stdout:', str(out), '\n'
+				                                                           'stderr:', str(err))
+		if err_code:
+			lg.error('Config checks failed, aborting!')
+			mininet.clean.cleanup()
+			sys.exit(1)
+		# Set relevant sysctls
+		for opt, val in self.config.sysctl:
+			self._old_sysctl[opt] = self._set_sysctl(opt, val)
+		# Fire up all daemons
+		for d in self.config.daemons:
+			kwargs = {"stdout": d.options.logobj, "stderr": d.options.logobj} if d.options.logobj else {}
+			self._processes.popen(*d.startup_line.split(' '), **kwargs)
+			# Busy-wait if the daemon needs some time before being started
+			while not d.has_started():
+				time.sleep(.001)

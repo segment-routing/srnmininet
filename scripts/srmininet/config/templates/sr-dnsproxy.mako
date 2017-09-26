@@ -1,4 +1,3 @@
-logfile "${node["sr-dnsproxy"].logfile}"
 ovsdb_client "${node["sr-dnsproxy"].ovsdb_client}"
 ovsdb_server "${node["sr-dnsproxy"].ovsdb_server}"
 ovsdb_database "${node["sr-dnsproxy"].ovsdb_database}"
