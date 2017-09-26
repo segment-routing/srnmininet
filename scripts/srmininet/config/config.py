@@ -37,11 +37,11 @@ class OVSDB(Daemon):
 
 	@property
 	def startup_line(self):
-		return '{name} {database} --remote={remotes} --pidfile={pid} --logfile={log}' \
+		return '{name} {database} --remote={remotes} --pidfile={pid} --log-file={log}' \
 			.format(name=self.NAME,
-		            database=self.options.database,
+		            database=os.path.join(self._node.cwd, self.options.database),
 		            remotes=" --remote=".join(self.options.remotes),
-		            pid=self._file('pid'),
+		            pid=os.path.abspath(self._file('pid')),
 		            log=self.options.logfile)
 
 	def build(self):
@@ -69,7 +69,9 @@ class OVSDB(Daemon):
 		   :param version: the version of the ovsdb table descriptions"""
 
 		defaults.database = "SR_test"
-		defaults.remotes = ["tcp:[%s]:6640" % itf.ip6 for itf in self._node.intfList()]
+		defaults.remotes = ["ptcp:6640:[%s]" % itf.ip6 for itf in self._node.intfList()]
+		if 'lo' not in self._node.intfList():
+			defaults.remotes.append("ptcp:6640:[::1]")
 		defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
 		defaults.version = "0.0.1"
 		super(OVSDB, self).set_defaults(defaults)
