@@ -35,6 +35,8 @@ class OVSDB(Daemon):
 	NAME = 'ovsdb-server'
 	PRIO = 0
 
+	OVSDB_INSERT_FORMAT = "[\"%s\",{\"row\":%s,\"table\":\"%s\",\"op\":\"insert\"}]"
+
 	@property
 	def startup_line(self):
 		return '{name} {database} --remote={remotes} --pidfile={pid} --log-file={log}' \
