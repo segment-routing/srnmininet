@@ -244,16 +244,21 @@ class SRDNSProxy(SRNDaemon):
 
 		cfg.proxy_listen_port = self.options.proxy_listen_port
 
+		cfg.client_server_fifo = self.options.client_server_fifo
+		self.files.append(cfg.client_server_fifo)
+
 		return cfg
 
 	def set_defaults(self, defaults):
 		""":param max_queries: The max number of pending DNS queries
 		   :param dns_server_port: Port number of the DNS server
-		   :param proxy_listen_port: Listening port of this daemon for external requests"""
+		   :param proxy_listen_port: Listening port of this daemon for external requests
+		   :param client_server_fifo: The file path for the creation of a fifo (for interal usage)"""
 
 		defaults.max_queries = 500
 		defaults.dns_server_port = 53
 		defaults.proxy_listen_port = 2000
+		defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
 
 		super(SRDNSProxy, self).set_defaults(defaults)
 
@@ -323,7 +328,8 @@ class SRRouted(SRNDaemon):
 		cfg = super(SRRouted, self).build()
 
 		cfg.router_name = self._node.name
-		cfg.dns_fifo = self._file(".fifo")
+		cfg.dns_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
+		self.files.append(cfg.dns_fifo)
 		cfg.iproute = "ip -6"
 		cfg.vnhpref = "ffff::"
 		cfg.ingress_iface = "lo"
@@ -400,15 +406,20 @@ class SRDNSFwd(SRNDaemon):
 		cfg.proxy_listen_port = self.options.proxy_listen_port
 		cfg.dnsfwd_listen_port = self.options.dnsfwd_listen_port
 
+		cfg.client_server_fifo = self.options.client_server_fifo
+		self.files.append(cfg.client_server_fifo)
+
 		return cfg
 
 	def set_defaults(self, defaults):
 		""":param max_queries: The max number of pending DNS queries
 		   :param dns_server_port: Port number of the DNS server
-		   :param proxy_listen_port: Listening port of this daemon for external requests"""
+		   :param proxy_listen_port: Listening port of this daemon for external requests
+		   :param client_server_fifo: The file path for the creation of a fifo (for interal usage)"""
 
 		defaults.max_queries = 500
 		defaults.proxy_listen_port = 2000
 		defaults.dnsfwd_listen_port = 2000
+		defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
 
 		super(SRDNSFwd, self).set_defaults(defaults)

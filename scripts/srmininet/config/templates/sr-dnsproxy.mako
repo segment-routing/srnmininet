@@ -7,3 +7,4 @@ proxy_listen_port "${node["sr-dnsproxy"].proxy_listen_port}"
 dns_server_port "${node["sr-dnsproxy"].dns_server_port}"
 dns_server "${node["sr-dnsproxy"].dns_server}"
 ntransacts ${node["sr-dnsproxy"].ntransacts}
+client_server_fifo "${node["sr-dnsproxy"].client_server_fifo}"

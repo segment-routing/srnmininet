@@ -1,4 +1,5 @@
 dns_fifo "${node["sr-dnsfwd"].dns_fifo}"
+client_server_fifo "${node["sr-dnsfwd"].client_server_fifo}"
 router_name "${node["sr-dnsfwd"].router_name}"
 max_queries ${node["sr-dnsfwd"].max_queries}
 proxy_listen_port "${node["sr-dnsfwd"].proxy_listen_port}"
