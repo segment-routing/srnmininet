@@ -8,6 +8,7 @@ from ipmininet.ipnet import IPNet
 from .config import OVSDB, SRNOSPF6
 from .srnlink import SRNTCIntf
 from .srnrouter import SRNConfig, SRNRouter
+from .srnhost import SRNHost
 
 
 class SRNNet(IPNet):
@@ -18,8 +19,10 @@ class SRNNet(IPNet):
 	             router=SRNRouter,
 	             intf=SRNTCIntf,
 	             config=SRNConfig,
+	             host=SRNHost,
 	             *args, **kwargs):
-		super(SRNNet, self).__init__(*args, router=router, intf=intf, use_v4=False, use_v6=True, config=config, **kwargs)
+		super(SRNNet, self).__init__(*args, router=router, intf=intf, use_v4=False, use_v6=True, config=config,
+		                             host=host, **kwargs)
 
 	def addLink(self, *args, **params):
 		defaults = {"intf": self.intf}
@@ -31,6 +34,10 @@ class SRNNet(IPNet):
 		self.routers = sorted(self.routers, key=lambda router: not router.controller)
 
 		super(SRNNet, self).start()
+
+		# Enable SRv6 on all hosts
+		for host in self.hosts:
+			host.enable_srv6()
 
 		# Add mapping between router ids and names to ovsdb database
 		name_ospfid_mapping = {}

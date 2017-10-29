@@ -39,6 +39,7 @@ class SRNConfig(RouterConfig):
 		                                *args, **kwargs)
 
 	def build(self):
+		self.sysctl = "net.ipv6.conf.all.seg6_enabled=1"
 		for intf in realIntfList(self._node):
 			self.sysctl = "net.ipv6.conf.%s.seg6_enabled=1" % intf.name
 		super(SRNConfig, self).build()
