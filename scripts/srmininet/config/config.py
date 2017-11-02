@@ -39,12 +39,13 @@ class OVSDB(Daemon):
 
 	@property
 	def startup_line(self):
-		return '{name} {database} --remote={remotes} --pidfile={pid} --log-file={log}' \
+		return '{name} {database} --remote={remotes} --pidfile={pid} --log-file={log} --unixctl={ctl}' \
 			.format(name=self.NAME,
 		            database=os.path.join(self._node.cwd, self.options.database),
 		            remotes=" --remote=".join(self.options.remotes),
 		            pid=os.path.abspath(self._file('pid')),
-		            log=self.options.logfile)
+		            log=self.options.logfile,
+		            ctl=os.path.abspath(self._file('ctl')))
 
 	def build(self):
 		cfg = super(OVSDB, self).build()
@@ -77,6 +78,10 @@ class OVSDB(Daemon):
 		defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
 		defaults.version = "0.0.1"
 		super(OVSDB, self).set_defaults(defaults)
+
+	def has_started(self):
+		# We override this such that we wait until we have the command socket
+		return os.path.exists(self._file('ctl'))
 
 
 class SRNZebra(Zebra):
@@ -133,9 +138,10 @@ class Named(Daemon):
 
 	@property
 	def startup_line(self):
-		return '{name} -c {cfg} -f -u root' \
+		return '{name} -c {cfg} -f -u root -p {port}' \
 			.format(name=self.NAME,
-		            cfg=self.cfg_filename)
+		            cfg=self.cfg_filename,
+		            port=self.options.dns_server_port)
 
 	@property
 	def dry_run(self):
@@ -144,6 +150,8 @@ class Named(Daemon):
 		            cfg=self.cfg_filename)
 
 	def set_defaults(self, defaults):
+		""":param dns_server_port: The port number of the dns server"""
+		defaults.dns_server_port = 2000
 		super(Named, self).set_defaults(defaults)
 
 	@property
@@ -258,8 +266,8 @@ class SRDNSProxy(SRNDaemon):
 		   :param client_server_fifo: The file path for the creation of a fifo (for interal usage)"""
 
 		defaults.max_queries = 500
-		defaults.dns_server_port = 53
-		defaults.proxy_listen_port = 2000
+		defaults.dns_server_port = 2000
+		defaults.proxy_listen_port = 53
 		defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
 
 		super(SRDNSProxy, self).set_defaults(defaults)
