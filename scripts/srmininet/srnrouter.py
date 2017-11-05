@@ -19,7 +19,7 @@ class SRNConfig(RouterConfig):
 		:param additional_daemons: Other daemons that should be used"""
 		# Importing here to avoid circular import
 		from ipmininet.router.config.ospf import OSPF
-		from .config import SRNOSPF6, SRCtrl, SRDNSFwd
+		from .config import SRNOSPF6, SRCtrl, SRRouted
 		# We don't want any zebra-specific settings, so we rely on the OSPF/OSPF6
 		# DEPENDS list for that daemon to run it with default settings
 		# We also don't want specific settings beside the defaults, so we don't
@@ -33,7 +33,7 @@ class SRNConfig(RouterConfig):
 			else:
 				d.append(SRNOSPF6)
 			if node.access_router:
-				d.append(SRDNSFwd)
+				d.append(SRRouted)
 		d.extend(additional_daemons)
 		super(SRNConfig, self).__init__(node, daemons=d,
 		                                *args, **kwargs)

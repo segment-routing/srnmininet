@@ -401,8 +401,6 @@ class SRRouted(SRNDaemon):
 		cfg = super(SRRouted, self).build()
 
 		cfg.router_name = self._node.name
-		cfg.dns_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
-		self.files.append(cfg.dns_fifo)
 		cfg.iproute = "ip -6"
 		cfg.vnhpref = "ffff::"
 		cfg.ingress_iface = "lo"
@@ -451,48 +449,3 @@ class SRRouted(SRNDaemon):
 					for x in realIntfList(peer_intf.node):
 						heapq.heappush(to_visit, (cost + SRRouted.cost_intf(x), x))
 		return None
-
-
-class SRDNSFwd(SRNDaemon):
-	NAME = 'sr-dnsfwd'
-	DEPENDS = (SRRouted,)
-
-	def build(self):
-		cfg = super(SRDNSFwd, self).build()
-
-		cfg.router_name = self._node.name
-		cfg.max_queries = self.options.max_queries
-
-		# Valid since SRRouted will be started faster
-		cfg.dns_fifo = self._node.config.daemon(SRRouted.NAME).options.dns_fifo
-
-		if self._node.sr_controller is None:
-			lg.error('No DNS Proxy specified for DNS forwarder, aborting!')
-			mininet.clean.cleanup()
-			sys.exit(1)
-		cfg.dns_proxy = self._node.config.daemon(SRRouted.NAME).options.ovsdb_server_ip
-		if cfg.dns_proxy is None:
-			lg.error('Cannot find an SR controller in the same AS, aborting!')
-			mininet.clean.cleanup()
-			sys.exit(1)
-
-		cfg.proxy_listen_port = self.options.proxy_listen_port
-		cfg.dnsfwd_listen_port = self.options.dnsfwd_listen_port
-
-		cfg.client_server_fifo = self.options.client_server_fifo
-		self.files.append(cfg.client_server_fifo)
-
-		return cfg
-
-	def set_defaults(self, defaults):
-		""":param max_queries: The max number of pending DNS queries
-		   :param dns_server_port: Port number of the DNS server
-		   :param proxy_listen_port: Listening port of this daemon for external requests
-		   :param client_server_fifo: The file path for the creation of a fifo (for interal usage)"""
-
-		defaults.max_queries = 500
-		defaults.proxy_listen_port = 2000
-		defaults.dnsfwd_listen_port = 2000
-		defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
-
-		super(SRDNSFwd, self).set_defaults(defaults)
