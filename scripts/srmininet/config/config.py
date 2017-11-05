@@ -4,14 +4,16 @@ import json
 import mininet.clean
 import os
 import sys
+from copy import deepcopy
 from mininet.log import lg
 
 from mako import exceptions as mako_exceptions
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon
-from ipmininet.router.config.utils import template_lookup
-from ipmininet.utils import realIntfList
+from ipmininet.router.config.utils import template_lookup, ConfigDict
+from ipmininet.utils import realIntfList, L3Router
+from ipmininet.link import OSPF_DEFAULT_AREA
 
 template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'templates'))
 
@@ -135,9 +137,29 @@ class SRNOSPF6(OSPF6):
 class Named(Daemon):
 	NAME = 'named'
 	PRIO = 0
+	ARMOR_CFG_FILE = "/etc/apparmor.d/local/usr.sbin.named"
+
+	def __init__(self, node, **kwargs):
+		super(Named, self).__init__(node, **kwargs)
+		self.armor_old_config = None
+
+	def _allow_apparmor(self):
+		"""Config Apparmor to allow named to access the cwd"""
+		self.armor_old_config = []
+		with open(self.ARMOR_CFG_FILE, "r") as fileobj:
+			self.armor_old_config = fileobj.readlines()
+		armor_new_config = deepcopy(self.armor_old_config)
+		armor_new_config.append("%s/** rw,\n" % os.path.abspath(self._node.cwd))
+		armor_new_config.append("%s rw,\n" % os.path.abspath(self._node.cwd))
+		with open(self.ARMOR_CFG_FILE, "w") as fileobj:
+			fileobj.writelines(armor_new_config)
+		self._node.cmd(["/etc/init.d/apparmor", "restart"])
 
 	@property
 	def startup_line(self):
+		# Add exception in apparmor
+		self._allow_apparmor()
+
 		return '{name} -c {cfg} -f -u root -p {port}' \
 			.format(name=self.NAME,
 		            cfg=self.cfg_filename,
@@ -146,22 +168,63 @@ class Named(Daemon):
 	@property
 	def dry_run(self):
 		return '{name} {cfg}' \
-			.format(name='named-checkconf',
-		            cfg=self.cfg_filename)
+			.format(name='named-checkconf', cfg=self.cfg_filename)
+
+	def build(self):
+		cfg = super(Named, self).build()
+		cfg.abs_logfile = os.path.abspath(cfg.logfile)
+		cfg.zone = self.options.zone
+		cfg.zone_cfg_filename = os.path.abspath(self.zone_cfg_filename)
+		cfg.ns = [ip6.ip.compressed for itf in self._node.intfList() for ip6 in itf.ip6s(exclude_lls=True)]
+		cfg.hosts = [ConfigDict(name=host.name, ip6s=[ip6.ip.compressed for itf in realIntfList(host)
+		                                              for ip6 in itf.ip6s(exclude_lls=True)])
+		             for host in self._find_hosts()]
+		return cfg
+
+	def _find_hosts(self):
+		"""Return the list of connected hosts in the ASN"""
+		base = self._node
+		visited = set()
+		to_visit = realIntfList(base)
+		hosts = []
+
+		while to_visit:
+			i = to_visit.pop()
+			if i in visited:
+				continue
+			visited.add(i)
+			for n in i.broadcast_domain:
+				if L3Router.is_l3router_intf(n):
+					if n.node.asn == base.asn or not n.node.asn:
+						to_visit.extend(realIntfList(n.node))
+				else:
+					if n not in hosts:
+						hosts.append(n.node)
+		return hosts
 
 	def set_defaults(self, defaults):
-		""":param dns_server_port: The port number of the dns server"""
+		""":param dns_server_port: The port number of the dns server
+		   :param zone: The local zone of name server"""
 		defaults.dns_server_port = 2000
+		defaults.zone = "test.sr."
 		super(Named, self).set_defaults(defaults)
+
+	def cleanup(self):
+		super(Named, self).cleanup()
+		if self.armor_old_config is not None:
+			with open(self.ARMOR_CFG_FILE, "w") as fileobj:
+				fileobj.writelines(self.armor_old_config)
+			self._node.cmd(["/etc/init.d/apparmor", "restart"])
+
 
 	@property
 	def zone_cfg_filename(self):
 		"""Return the filename in which this daemon rules should be stored"""
-		return self._filepath("test.sr.zone")
+		return self._filepath("%szone" % self.options.zone)
 
 	@property
 	def zone_template_filename(self):
-		return "test.sr.mako"
+		return "zone.mako"
 
 	def render(self, cfg, **kwargs):
 
