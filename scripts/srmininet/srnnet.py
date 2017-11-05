@@ -1,14 +1,13 @@
-
-import json
 from mininet.log import lg as log
 
 import ipaddress
 from ipmininet.ipnet import IPNet
+from ipmininet.utils import L3Router
 
 from .config import OVSDB, SRNOSPF6
+from .srnhost import SRNHost
 from .srnlink import SRNTCIntf
 from .srnrouter import SRNConfig, SRNRouter
-from .srnhost import SRNHost
 
 
 class SRNNet(IPNet):
@@ -39,12 +38,10 @@ class SRNNet(IPNet):
 		for host in self.hosts:
 			host.enable_srv6()
 
-		# Add mapping between router ids and names to ovsdb database
+		# Insert the initial topology info to SRDB
 		name_ospfid_mapping = {}
-		sr_controller = None
+		sr_controller_ovsdb = None
 		for router in self.routers:
-			if router.controller:
-				sr_controller = router
 			for daemon in router.config.daemons:
 				if daemon.NAME == SRNOSPF6.NAME:
 					if daemon.options.routerid:
@@ -52,14 +49,27 @@ class SRNNet(IPNet):
 					else:
 						name_ospfid_mapping[router.name] = router.config.routerid
 					name_ospfid_mapping[router.name] = int(ipaddress.ip_address(name_ospfid_mapping[router.name]))
-					break
+				elif daemon.NAME == OVSDB.NAME:
+					sr_controller_ovsdb = daemon
 
-		if sr_controller:
+		if sr_controller_ovsdb:
 			log.info('*** Inserting mapping between names and ids to OVSDB\n')
 			for name, id in name_ospfid_mapping.iteritems():
-				print(self.insertNameIdMapping(sr_controller, name, id))
+				print(sr_controller_ovsdb.insert_entry("NameIdMapping", {"routerName": name, "routerId": id}))
 
-	@staticmethod
-	def insertNameIdMapping(sr_controller, name, id):
-		insert = OVSDB.OVSDB_INSERT_FORMAT % ("SR_test",json.dumps({"routerName": name, "routerId": id}), "NameIdMapping")
-		return sr_controller.cmd("ovsdb-client transact tcp:[::1]:6640 '%s'" % insert)
+			log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
+			for link in self.links:
+				if L3Router.is_l3router_intf(link.intf1) and L3Router.is_l3router_intf(link.intf2):
+
+					# TODO Links should be oriented in the future !
+					entry = {"name1": link.intf1.node.name, "name2": link.intf2.node.name,
+					         "addr1": str(link.intf1.ip6s(exclude_lls=True).next().ip),  # Can raise an exception if none exists
+					         "addr2": str(link.intf2.ip6s(exclude_lls=True).next().ip),  # Can raise an exception if none exists
+					         "metric": link.intf1.igp_metric,
+					         "bw": link.intf1.bw,
+					         "ava_bw": link.intf1.bw,
+					         "delay": link.intf1.delay}
+					entry["routerId1"] = name_ospfid_mapping[entry["name1"]]
+					entry["routerId2"] = name_ospfid_mapping[entry["name2"]]
+
+					print(sr_controller_ovsdb.insert_entry("AvailableLink", entry))

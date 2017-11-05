@@ -10,6 +10,7 @@ class SRNTCIntf(TCIntf):
 	def __init__(self, *args, **kwargs):
 		super(SRNTCIntf, self).__init__(*args, **kwargs)
 		self.delay = kwargs.get("delay", 0)
+		self.bw = kwargs.get("bw", 0)
 
 	def bwCmds(self, htb_burst=None, **params):
 		"""Return tc commands to set bandwidth.

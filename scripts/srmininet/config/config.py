@@ -69,7 +69,7 @@ class OVSDB(Daemon):
 
 	def set_defaults(self, defaults):
 		""":param database: the database name
-		   :param remotes: the list of <protocol>:[<ip>]:<port> specs to use to communicate to the OVSDB server
+		   :param remotes: the list of <protocol>:<port>:[<ip>] specs to use to communicate to the OVSDB server
 		   :param schema_tables: the ovsdb table descriptions
 		   :param version: the version of the ovsdb table descriptions"""
 
@@ -84,6 +84,26 @@ class OVSDB(Daemon):
 	def has_started(self):
 		# We override this such that we wait until we have the command socket
 		return os.path.exists(self._file('ctl'))
+
+	def _remote_server_to_client(self):
+		"""The remote parameter of the client-side ovsdb is different by the order <protocol>:[<ip>]:<port>
+		   and by the protocols available (no protocol name starting by 'p')"""
+
+		for server_remote in self.options.remotes:
+			proto = server_remote.split(":")[0]
+
+			# Only "listener protocol names"
+			if proto[0] != "p":
+				continue
+
+			proto = proto[1:]
+			port = server_remote.split(":")[1]
+			addr = server_remote[3 + len(proto) + len(port):]
+			yield "%s:%s:%s" % (proto, addr, port)
+
+	def insert_entry(self, table_name, content):
+		insert = self.OVSDB_INSERT_FORMAT % (self.options.database, json.dumps(content), table_name)
+		return self._node.cmd("ovsdb-client transact %s '%s'" % (self._remote_server_to_client().next(), insert))
 
 
 class SRNZebra(Zebra):
