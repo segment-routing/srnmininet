@@ -9,6 +9,7 @@ from mininet.log import lg
 from ipmininet.router import Router
 from ipmininet.router.config import RouterConfig
 from ipmininet.utils import realIntfList
+from ipmininet.router.config.ospf6 import OSPF6RedistributedRoute
 
 
 class SRNConfig(RouterConfig):
@@ -29,9 +30,10 @@ class SRNConfig(RouterConfig):
 			d.append(OSPF)
 		if node.use_v6:
 			if node.controller:
-				d.extend([(SRNOSPF6, {'ovsdb_adv': True}), SRCtrl])
+				d.extend([(SRNOSPF6, {'ovsdb_adv': True,
+				                      'redistribute': [OSPF6RedistributedRoute("connected")]}), SRCtrl])
 			else:
-				d.append(SRNOSPF6)
+				d.append((SRNOSPF6, {'redistribute': [OSPF6RedistributedRoute("connected")]}))
 			if node.access_router:
 				d.append(SRRouted)
 		d.extend(additional_daemons)

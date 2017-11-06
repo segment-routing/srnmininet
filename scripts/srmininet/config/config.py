@@ -121,14 +121,9 @@ class OVSDB(Daemon):
 
 	def insert_entry(self, table_name, content):
 		insert = self.OVSDB_INSERT_FORMAT % (self.options.database, json.dumps(content), table_name)
-		return self._node.cmd("ovsdb-client transact %s '%s'" % (self._remote_server_to_client().next(), insert))
-
-
-class SRNZebra(Zebra):
-	"""
-	This daemon loads Zebra froma modified Quagga.
-	"""
-	NAME = 'srnzebra'
+		return self._node.cmd("%s transact %s '%s'" % (self.options.ovsdb_client,
+		                                               self._remote_server_to_client().next(),
+		                                               insert))
 
 
 class SRNOSPF6(OSPF6):
@@ -136,8 +131,7 @@ class SRNOSPF6(OSPF6):
 	This daemon loads OSPF6 froma modified Quagga.
 	It enables communication with OVSDB
 	"""
-	NAME = 'srnospf6d'
-	DEPENDS = (SRNZebra,)
+	DEPENDS = (Zebra,)
 
 	def build(self):
 		cfg = super(SRNOSPF6, self).build()
@@ -165,6 +159,10 @@ class SRNOSPF6(OSPF6):
 			self.options.logobj.close()
 
 		super(SRNOSPF6, self).cleanup()
+
+	@property
+	def template_filename(self):
+		return 'srn%s.mako' % self.NAME
 
 
 class Named(Daemon):
