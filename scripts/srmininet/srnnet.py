@@ -1,7 +1,7 @@
 from mininet.log import lg as log
 
 import ipaddress
-from ipmininet.ipnet import IPNet
+from ipmininet.ipnet import IPNet, BroadcastDomain
 from ipmininet.utils import L3Router
 
 from .config import OVSDB, SRNOSPF6
@@ -82,3 +82,31 @@ class SRNNet(IPNet):
 					entry["routerId2"] = name_ospfid_mapping[entry["name2"]]
 
 					print(sr_controller_ovsdb.insert_entry("AvailableLink", entry))
+
+	def buildFromTopo(self, topo):
+		super(SRNNet, self).buildFromTopo(topo)
+		# Add a loopback interface to each router
+		for r in self.routers:
+			lo = self.intf('lo', node=r, moveIntfFn=lambda x, y: True)
+			lo.ip = '127.0.0.1/8'
+			lo.ip6 = '::1'
+
+	def _broadcast_domains(self):
+		"""Build the broadcast domains for this topology"""
+		domains = []
+		interfaces = {intf: False
+		              for n in self.values()
+		              if BroadcastDomain.is_domain_boundary(n)
+		              for intf in n.intfList()}
+		for intf, explored in interfaces.iteritems():
+			# the interface already belongs to a broadcast domain
+			if explored:
+				continue
+			# create a new domain and explore the interface
+			bd = BroadcastDomain(intf)
+			# Mark all explored interfaces belonging to that domain
+			for i in bd:
+				interfaces[i] = True
+				i.broadcast_domain = bd
+			domains.append(bd)
+		return domains

@@ -1,5 +1,6 @@
 
 import re
+from ipaddress import ip_interface
 from mininet.log import lg
 
 from ipmininet.link import TCIntf
@@ -36,3 +37,7 @@ class SRNTCIntf(TCIntf):
 			cmds.append("%s filter add dev %s protocol ipv6 parent 5: prio 1 u32 match ip6 dst ::/0 flowid 1:1")
 
 		return cmds, parent
+
+	def _del_ip(self, ip):
+		if self.name != 'lo' or ip != ip_interface("::1"):
+			super(SRNTCIntf, self)._del_ip(ip)

@@ -83,7 +83,6 @@ class SRNRouter(Router):
 	def start(self):
 		"""Start the router: Configure the daemons, set the relevant sysctls,
 		and fire up all needed processes"""
-		self.cmd('ip', 'link', 'set', 'dev', 'lo', 'up')
 		# Build the config
 		self.config.build()
 		# Check them
@@ -92,10 +91,8 @@ class SRNRouter(Router):
 			out, err, code = self._processes.pexec(*d.dry_run.split(' '))
 			err_code = err_code or code
 			if code:
-				lg.error(d.NAME, 'configuration check failed ['
-				                 'rcode:', str(code), ']\n'
-				                                      'stdout:', str(out), '\n'
-				                                                           'stderr:', str(err))
+				lg.error(d.NAME, 'configuration check failed [rcode:', str(code),
+				         ']\nstdout:', str(out), '\nstderr:', str(err))
 		if err_code:
 			lg.error('Config checks failed, aborting!')
 			mininet.clean.cleanup()
