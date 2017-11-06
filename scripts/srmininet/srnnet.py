@@ -2,7 +2,7 @@ from mininet.log import lg as log
 
 import ipaddress
 from ipmininet.ipnet import IPNet, BroadcastDomain
-from ipmininet.utils import L3Router
+from ipmininet.utils import L3Router, realIntfList, otherIntf
 
 from .config import OVSDB, SRNOSPF6
 from .srnhost import SRNHost
@@ -60,10 +60,18 @@ class SRNNet(IPNet):
 		if sr_controller_ovsdb:
 			log.info('*** Inserting mapping between names and ids to OVSDB\n')
 			for name, id in name_ospfid_mapping.iteritems():
+
+				# Add host prefixes so that sr-ctrl can find the hosts in its computations
+				prefix_list = [ipaddress.ip_interface(name_prefix_mapping[name].ip.compressed + "/64").network.with_prefixlen]  # FIXME temporary
+				for itf in realIntfList(self[name]):
+					if not L3Router.is_l3router_intf(otherIntf(itf)):
+						for ip6 in itf.ip6s(exclude_lls=True):
+							prefix_list.append(ipaddress.ip_interface(ip6.ip.compressed + "/64").network.with_prefixlen)  # FIXME temporary
+
 				entry = {"routerName": name, "routerId" : id,
 				         "addr": name_prefix_mapping[name].ip.compressed,
-				         "prefix": name_prefix_mapping[name].ip.compressed + "/64",  # temporary
-				         "pbsid": name_prefix_mapping[name].ip.compressed + "/64"}  # temporary
+				         "prefix": ";".join(prefix_list),
+				         "pbsid": name_prefix_mapping[name].ip.compressed + "/64"}  # FIXME temporary
 				print(sr_controller_ovsdb.insert_entry("NameIdMapping", entry))
 
 			log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
