@@ -4,6 +4,7 @@ import json
 import mininet.clean
 import os
 import sys
+import time
 from copy import deepcopy
 from mininet.log import lg
 
@@ -13,7 +14,6 @@ from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon
 from ipmininet.router.config.utils import template_lookup, ConfigDict
 from ipmininet.utils import realIntfList, L3Router
-from ipmininet.link import OSPF_DEFAULT_AREA
 
 template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'templates'))
 
@@ -68,22 +68,34 @@ class OVSDB(Daemon):
 		            schema=self.cfg_filename)
 
 	def set_defaults(self, defaults):
-		""":param database: the database name
+		""":param ovsdb_client: the command to run OVSDB client executable
+		   :param database: the database name
 		   :param remotes: the list of <protocol>:<port>:[<ip>] specs to use to communicate to the OVSDB server
 		   :param schema_tables: the ovsdb table descriptions
 		   :param version: the version of the ovsdb table descriptions"""
-
+		defaults.ovsdb_client = "ovsdb-client"
 		defaults.database = "SR_test"
-		defaults.remotes = ["ptcp:6640:[%s]" % itf.ip6 for itf in self._node.intfList()]
-		if 'lo' not in self._node.intfList():
-			defaults.remotes.append("ptcp:6640:[::1]")
+		defaults.remotes = ["ptcp:6640:[%s]" % ip6.ip.compressed
+		                    for itf in self._node.intfList()
+		                    for ip6 in itf.ip6s(exclude_lls=True)]
 		defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
 		defaults.version = "0.0.1"
 		super(OVSDB, self).set_defaults(defaults)
 
 	def has_started(self):
 		# We override this such that we wait until we have the command socket
-		return os.path.exists(self._file('ctl'))
+		if os.path.exists(self._file('ctl')):
+			time.sleep(1)  # FIXME Ugly but no better idea
+			return True
+		return False
+
+	@staticmethod
+	def extract_client_remote(remote):
+		remote_split = remote.split(":")
+		proto = remote_split[0]
+		port = remote_split[-1]
+		addr = remote[2+len(proto):len(remote)-len(port)-2]
+		return proto, addr, port
 
 	def _remote_server_to_client(self):
 		"""The remote parameter of the client-side ovsdb is different by the order <protocol>:[<ip>]:<port>
@@ -100,6 +112,12 @@ class OVSDB(Daemon):
 			port = server_remote.split(":")[1]
 			addr = server_remote[3 + len(proto) + len(port):]
 			yield "%s:%s:%s" % (proto, addr, port)
+
+	def remote_server_to_client(self, remote_ip):
+		for remote in self._remote_server_to_client():
+			if "[%s]" % remote_ip in remote:
+				return remote
+		return None
 
 	def insert_entry(self, table_name, content):
 		insert = self.OVSDB_INSERT_FORMAT % (self.options.database, json.dumps(content), table_name)
@@ -125,26 +143,21 @@ class SRNOSPF6(OSPF6):
 		cfg = super(SRNOSPF6, self).build()
 
 		cfg.ovsdb_adv = self.options.ovsdb_adv
-		cfg.ovsdb_database = self.options.ovsdb_database
-		cfg.ovsdb_proto = self.options.ovsdb_proto
-		cfg.ovsdb_ip6 = self.options.ovsdb_ip6
-		cfg.ovsdb_port = self.options.ovsdb_port
+		if cfg.ovsdb_adv:
+			sr_controller_ip, ovsdb = find_closest_intf(self._node, self._node.sr_controller)
+			cfg.ovsdb_server = ovsdb.remote_server_to_client(sr_controller_ip)
+			cfg.ovsdb_database = ovsdb.options.database
+			cfg.ovsdb_client = ovsdb.options.ovsdb_client
+			cfg.ovsdb_proto, cfg.ovsdb_ip6, cfg.ovsdb_port = ovsdb.extract_client_remote(cfg.ovsdb_server)
+
 		if not self.options.logobj:
 			self.options.logobj = open(self.options.logfile + ".stdout", "a+")
 
 		return cfg
 
 	def set_defaults(self, defaults):
-		""":param ovsdb_adv: whether this daemon updates the database whenever the network state changes.
-		   :param ovsdb_database: the database name
-		   :param ovsdb_proto: the list of <protocol>:[<ip>]:<port> specs to use to communicate to the OVSDB server
-		   :param ovsdb_port: the version of the ovsdb table descriptions"""
-
+		""":param ovsdb_adv: whether this daemon updates the database whenever the network state changes."""
 		defaults.ovsdb_adv = False
-		defaults.ovsdb_database = "SR_test"
-		defaults.ovsdb_proto = "tcp"
-		defaults.ovsdb_ip6 = "::1"
-		defaults.ovsdb_port = "6640"
 		super(SRNOSPF6, self).set_defaults(defaults)
 
 	def cleanup(self):
@@ -281,11 +294,11 @@ class SRNDaemon(Daemon):
 	def build(self):
 		cfg = super(SRNDaemon, self).build()
 
-		cfg.ovsdb_client = self.options.ovsdb_client
-		cfg.ovsdb_server = "%s:[%s]:%s" %(self.options.ovsdb_server_proto,
-		                                  self.options.ovsdb_server_ip,
-		                                  self.options.ovsdb_server_port)
-		cfg.ovsdb_database = self.options.ovsdb_database
+		sr_controller_ip, ovsdb = find_closest_intf(self._node, self._node.sr_controller)
+		self.options.sr_controller_ip = sr_controller_ip
+		cfg.ovsdb_server = ovsdb.remote_server_to_client(sr_controller_ip)
+		cfg.ovsdb_database = ovsdb.options.database
+		cfg.ovsdb_client = ovsdb.options.ovsdb_client
 		cfg.ntransacts = self.options.ntransacts
 
 		if not self.options.logobj:
@@ -300,18 +313,7 @@ class SRNDaemon(Daemon):
 		            cfg=self.cfg_filename)
 
 	def set_defaults(self, defaults):
-		""":param ovsdb_client: the command to run OVSDB client executable
-		   :param ovsdb_server_proto: the protocol to communicate to the OVSDB server
-		   :param ovsdb_server_ip: the address to communicate to the OVSDB server
-		   :param ovsdb_server_port: the port to communicate to the OVSDB server
-		   :param ovsdb_database: the name of the database to synchronize
-		   :param ntransacts: the number of threads sending transaction RPCs to OVSDB"""
-
-		defaults.ovsdb_client = "ovsdb-client"
-		defaults.ovsdb_server_proto = "tcp"
-		defaults.ovsdb_server_ip = "::1"
-		defaults.ovsdb_server_port = "6640"
-		defaults.ovsdb_database = "SR_test"
+		""":param ntransacts: the number of threads sending transaction RPCs to OVSDB"""
 		defaults.ntransacts = 1
 		super(SRNDaemon, self).set_defaults(defaults)
 
@@ -332,7 +334,7 @@ class SRDNSProxy(SRNDaemon):
 		cfg.router_name = self._node.name
 		cfg.max_queries = self.options.max_queries
 
-		cfg.dns_server = "::1"  # Acceptable since "Named" is a required daemon
+		cfg.dns_server = self.options.sr_controller_ip  # Acceptable since "Named" is a required daemon with OVSDB
 		cfg.dns_server_port = self.options.dns_server_port
 
 		cfg.proxy_listen_port = self.options.proxy_listen_port
@@ -419,53 +421,42 @@ class SRRouted(SRNDaemon):
 
 	def build(self):
 		cfg = super(SRRouted, self).build()
-
 		cfg.router_name = self._node.name
 		cfg.iproute = "ip -6"
 		cfg.vnhpref = "ffff::"
 		cfg.ingress_iface = "lo"
-
-		if self._node.sr_controller is None:
-			lg.error('No DNS Proxy specified for DNS forwarder, aborting!')
-			mininet.clean.cleanup()
-			sys.exit(1)
-		self.options.ovsdb_server_ip = self.find_closest_intf(self._node, self._node.sr_controller)
-		if self.options.ovsdb_server_ip is None:
-			lg.error('Cannot find an SR controller in the same AS, aborting!')
-			mininet.clean.cleanup()
-			sys.exit(1)
-		cfg.ovsdb_server = "%s:[%s]:%s" %(self.options.ovsdb_server_proto,
-		                                  self.options.ovsdb_server_ip,
-		                                  self.options.ovsdb_server_port)
-
 		return cfg
 
-	@staticmethod
-	def cost_intf(intf):
-		return intf.delay if intf.delay else SRRouted.DEFAULT_COST
 
-	@staticmethod
-	def find_closest_intf(base, sr_controller):
+def ovsdb_daemon(node):
+	return node.config.daemon(OVSDB.NAME)
 
-		if base.name == sr_controller:
-			return "::1"
 
-		visited = set()
-		to_visit = [(SRRouted.cost_intf(intf), intf) for intf in realIntfList(base)]
-		heapq.heapify(to_visit)
+def cost_intf(intf):
+	return intf.delay if intf.delay else SRRouted.DEFAULT_COST
 
-		# Explore all interfaces in base ASN recursively, until we find one
-		# connected to the SRN controller.
-		while to_visit:
-			cost, intf = heapq.heappop(to_visit)
-			if intf in visited:
-				continue
-			visited.add(intf)
-			for peer_intf in intf.broadcast_domain.routers:
-				if peer_intf.node.name == sr_controller:
-					ip = peer_intf.ip
-					return ip if ip else peer_intf.ip6
-				elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
-					for x in realIntfList(peer_intf.node):
-						heapq.heappush(to_visit, (cost + SRRouted.cost_intf(x), x))
-		return None
+
+def find_closest_intf(base, sr_controller):
+
+	if base.name == sr_controller:
+		return (base.intf("lo").ip6 or "::1"), ovsdb_daemon(base)
+
+	visited = set()
+	to_visit = [(cost_intf(intf), intf) for intf in realIntfList(base)]
+	heapq.heapify(to_visit)
+
+	# Explore all interfaces in base ASN recursively, until we find one
+	# connected to the SRN controller.
+	while to_visit:
+		cost, intf = heapq.heappop(to_visit)
+		if intf in visited:
+			continue
+		visited.add(intf)
+		for peer_intf in intf.broadcast_domain.routers:
+			if peer_intf.node.name == sr_controller:
+				ip = peer_intf.ip
+				return (ip if ip else peer_intf.ip6), ovsdb_daemon(peer_intf.node)
+			elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
+				for x in realIntfList(peer_intf.node):
+					heapq.heappush(to_visit, (cost + cost_intf(x), x))
+	return None

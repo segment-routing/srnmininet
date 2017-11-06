@@ -40,8 +40,13 @@ class SRNNet(IPNet):
 
 		# Insert the initial topology info to SRDB
 		name_ospfid_mapping = {}
+		name_prefix_mapping = {}
 		sr_controller_ovsdb = None
 		for router in self.routers:
+			for ip6 in self[router.name].intf("lo").ip6s(exclude_lls=True):
+				if ip6 != ipaddress.ip_interface("::1"):
+					name_prefix_mapping[router.name] = ip6
+					break
 			for daemon in router.config.daemons:
 				if daemon.NAME == SRNOSPF6.NAME:
 					if daemon.options.routerid:
@@ -55,7 +60,11 @@ class SRNNet(IPNet):
 		if sr_controller_ovsdb:
 			log.info('*** Inserting mapping between names and ids to OVSDB\n')
 			for name, id in name_ospfid_mapping.iteritems():
-				print(sr_controller_ovsdb.insert_entry("NameIdMapping", {"routerName": name, "routerId": id}))
+				entry = {"routerName": name, "routerId" : id,
+				         "addr": name_prefix_mapping[name].ip.compressed,
+				         "prefix": name_prefix_mapping[name].ip.compressed + "/64",  # temporary
+				         "pbsid": name_prefix_mapping[name].ip.compressed + "/64"}  # temporary
+				print(sr_controller_ovsdb.insert_entry("NameIdMapping", entry))
 
 			log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
 			for link in self.links:
