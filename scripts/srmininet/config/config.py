@@ -333,8 +333,9 @@ class SRDNSProxy(SRNDaemon):
 		cfg.max_queries = self.options.max_queries
 
 		cfg.dns_server = self.options.sr_controller_ip  # Acceptable since "Named" is a required daemon with OVSDB
-		cfg.dns_server_port = self.options.dns_server_port
+		cfg.dns_server_port = self._node.config.daemon(Named.NAME).options.dns_server_port
 
+		cfg.proxy_listen_addr = self.options.sr_controller_ip  # Acceptable since we require the daemon with OVSDB
 		cfg.proxy_listen_port = self.options.proxy_listen_port
 
 		cfg.client_server_fifo = self.options.client_server_fifo
@@ -344,12 +345,10 @@ class SRDNSProxy(SRNDaemon):
 
 	def set_defaults(self, defaults):
 		""":param max_queries: The max number of pending DNS queries
-		   :param dns_server_port: Port number of the DNS server
 		   :param proxy_listen_port: Listening port of this daemon for external requests
 		   :param client_server_fifo: The file path for the creation of a fifo (for interal usage)"""
 
 		defaults.max_queries = 500
-		defaults.dns_server_port = 2000
 		defaults.proxy_listen_port = 53
 		defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
 
