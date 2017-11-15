@@ -17,11 +17,13 @@ $iproute2_version = "v4.14.1"
 $iproute2_git_repo = "git://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git"
 $iproute2_cwd = "/home/vagrant/iproute2"
 
-# Remove useless warnings
-Package { allow_virtual => true }
-
-# PATH
 $default_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+Package {
+  allow_virtual => true,
+  ensure => installed,
+  require => Exec['apt-update'],
+}
 Exec { path => $default_path }
 
 exec { 'apt-update':
@@ -30,123 +32,52 @@ exec { 'apt-update':
 
 
 # Python packages
-package { 'python-setuptools':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'python-pip':
-  require => [ Exec['apt-update'], Package['python-setuptools'] ],
-  ensure => installed,
-}
+package { 'python-setuptools':}
+package { 'python-pip':}
 package { 'py2-ipaddress':
   require => Package['python-pip'],
-  ensure => installed,
   provider => 'pip',
 }
 package { 'mako':
   require => Package['python-pip'],
-  ensure => installed,
   provider => 'pip',
 }
 package { 'six':
   require => Package['python-pip'],
-  ensure => installed,
   provider => 'pip',
 }
 
 # Networking
-package { 'wireshark':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'traceroute':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'tcpdump':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'bridge-utils':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'mininet':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
+package { 'wireshark':}
+package { 'traceroute':}
+package { 'tcpdump':}
+package { 'bridge-utils':}
+package { 'mininet':}
 
 # Compilation
-package { 'libreadline6':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
+package { 'libreadline6':}
 package { 'libreadline6-dev':
   require => [ Exec['apt-update'], Package['libreadline6'] ],
-  ensure => installed,
 }
-package { 'gawk':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'automake':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
+package { 'gawk':}
+package { 'automake':}
 package { 'libtool':
   require => [ Exec['apt-update'], Package['m4'], Package['automake'] ],
-  ensure => installed,
 }
-package { 'm4':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'bison':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'flex':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'pkg-config':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'dia':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'texinfo':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'libc-ares-dev':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'cmake':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
+package { 'm4':}
+package { 'bison':}
+package { 'flex':}
+package { 'pkg-config':}
+package { 'dia':}
+package { 'texinfo':}
+package { 'libc-ares-dev':}
+package { 'cmake':}
 
 # Miscellaneous
-package { 'xterm':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'man':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'git':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
-package { 'valgrind':
-  require => Exec['apt-update'],
-  ensure => installed,
-}
+package { 'xterm':}
+package { 'man':}
+package { 'git':}
+package { 'valgrind':}
 
 # Locale settings
 exec { 'locales':
