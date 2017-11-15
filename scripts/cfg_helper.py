@@ -6,8 +6,8 @@ from mininet.log import LEVELS, lg
 import ipmininet
 from ipmininet.cli import IPCLI
 
-from srmininet.square_axa import SquareAxA
-from srmininet.srnnet import SRNNet
+from srnmininet.square_axa import SquareAxA
+from srnmininet.srnnet import SRNNet
 
 topo_classes = [SquareAxA]
 TOPOS = {topo.__name__:topo for topo in topo_classes}
