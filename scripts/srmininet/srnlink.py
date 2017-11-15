@@ -1,12 +1,12 @@
 
 import re
-from ipaddress import ip_interface
 from mininet.log import lg
 
 from ipmininet.link import TCIntf
+from sr6mininet.sr6link import SR6TCIntf
 
 
-class SRNTCIntf(TCIntf):
+class SRNTCIntf(SR6TCIntf):
 
 	def __init__(self, *args, **kwargs):
 		super(SRNTCIntf, self).__init__(*args, **kwargs)
