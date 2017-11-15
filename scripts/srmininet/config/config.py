@@ -1,19 +1,17 @@
 
 import heapq
 import json
-import mininet.clean
 import os
-import sys
 import time
 from copy import deepcopy
 from mininet.log import lg
 
-from mako import exceptions as mako_exceptions
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon
-from ipmininet.router.config.utils import template_lookup, ConfigDict
-from ipmininet.utils import realIntfList, L3Router
+from ipmininet.router.config.utils import ConfigDict, template_lookup
+from ipmininet.utils import L3Router, realIntfList
+from mako import exceptions as mako_exceptions
 
 template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'templates'))
 
@@ -188,9 +186,6 @@ class Named(Daemon):
 
 	@property
 	def startup_line(self):
-		# Add exception in apparmor
-		self._allow_apparmor()
-
 		return '{name} -c {cfg} -f -u root -p {port}' \
 			.format(name=self.NAME,
 		            cfg=self.cfg_filename,
@@ -210,6 +205,8 @@ class Named(Daemon):
 		cfg.hosts = [ConfigDict(name=host.name, ip6s=[ip6.ip.compressed for itf in realIntfList(host)
 		                                              for ip6 in itf.ip6s(exclude_lls=True)])
 		             for host in self._find_hosts()]
+		# Add exception in apparmor
+		self._allow_apparmor()
 		return cfg
 
 	def _find_hosts(self):
