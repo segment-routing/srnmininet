@@ -17,7 +17,7 @@ class SquareAxA(SRNTopo):
 	In this example, self.square_size == 3
 	"""
 
-	def __init__(self, controller_idx=3, square_size=3, schema_tables=None, *args, **kwargs):
+	def __init__(self, controller_idx=2, square_size=3, schema_tables=None, *args, **kwargs):
 		""":param controller_idx: The index of routers that will run the SR controller
 		   :param square_size: The size of the squares of routers (> 0)"""
 
@@ -25,7 +25,7 @@ class SquareAxA(SRNTopo):
 
 		if self.square_size <= 0:
 			raise Exception("Negative square size for %s" % type(self).__name__)
-		elif controller_idx <= 0 or controller_idx < self.square_size:
+		elif controller_idx <= 0 or controller_idx >= self.square_size * self.square_size:
 			raise Exception("Negative or too big index for the router hosting the controller"
 			                + "(square size %d, index %s) for %s"
 			                % (self.square_size, controller_idx, type(self).__name__))
