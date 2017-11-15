@@ -61,16 +61,16 @@ class SRNNet(SR6Net):
 				id = name_ospfid_mapping.get(name, None)
 
 				# Add host prefixes so that sr-ctrl can find the hosts in its computations
-				prefix_list = [ipaddress.ip_interface(name_prefix_mapping[name].ip.compressed + "/64").network.with_prefixlen]  # FIXME temporary
+				prefix_list = [name_prefix_mapping[name].network.with_prefixlen]
 				for itf in realIntfList(self[name]):
 					if not L3Router.is_l3router_intf(otherIntf(itf)):
 						for ip6 in itf.ip6s(exclude_lls=True):
-							prefix_list.append(ipaddress.ip_interface(ip6.ip.compressed + "/64").network.with_prefixlen)  # FIXME temporary
+							prefix_list.append(ip6.network.with_prefixlen)
 
 				entry = {"routerName": name, "routerId": id,
 				         "addr": name_prefix_mapping[name].ip.compressed,
 				         "prefix": ";".join(prefix_list),
-				         "pbsid": name_prefix_mapping[name].ip.compressed + "/64"}  # FIXME temporary
+				         "pbsid": name_prefix_mapping[name].network.with_prefixlen}
 				if self.static_routing:
 					entry["name"] = entry["routerName"]
 					del entry["routerId"]

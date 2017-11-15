@@ -13,8 +13,9 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
-$iproute_cwd = "/home/vagrant/SRv6/iproute2"
-$iproute_configure = "/home/vagrant/SRv6/dns-ctrl-resources/patches/configure-iproute2"
+$iproute2_version = "v4.14.1"
+$iproute2_git_repo = "git://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git"
+$iproute2_cwd = "/home/vagrant/iproute2"
 
 # Remove useless warnings
 Package { allow_virtual => true }
@@ -198,12 +199,19 @@ exec { 'jansson':
               make install;"
 }
 
+exec { 'iproute2-download':
+  require => [ Exec['apt-update'] ],
+  creates => $iproute2_cwd,
+  command => "git clone ${iproute2_git_repo} ${iproute2_cwd} &&\
+              git checkout ${iproute2_version};",
+}
+# Somehow using TMPDIR as bash variable is a problem in the vagrant box
 exec { 'iproute2':
-  require => [ Exec['apt-update'] ] + $compilation,
+  require => [ Exec['apt-update'], Exec['iproute2-download'] ] + $compilation,
   creates => "/home/vagrant/.newiproute",
-  cwd => $iproute_cwd,
-  path => "${default_path}:${iproute_cwd}",
-  command => "cp ${iproute_configure} ${iproute_cwd}/configure &&\
+  cwd => $iproute2_cwd,
+  path => "${default_path}:${iproute2_cwd}",
+  command => "sed -i -e 's/TMPDIR/TEMPDIR/g' ${iproute2_cwd}/configure &&\
               configure &&\
               make &&\
               make install &&\
