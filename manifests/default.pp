@@ -1,5 +1,5 @@
 
-$ovsdb_version = "2.6.1"
+$ovsdb_version = "2.8.1"
 $ovsdb_release_url = "http://openvswitch.org/releases/openvswitch-${ovsdb_version}.tar.gz"
 $ovsdb_root_dir = "/home/vagrant"
 $ovsdb_source_path = "${ovsdb_root_dir}/openvswitch-${ovsdb_version}"
@@ -169,7 +169,8 @@ exec { 'ovsdb':
   cwd => $ovsdb_source_path,
   creates => $ovsdb_path,
   path => "${default_path}:${ovsdb_source_path}",
-  command => "configure --prefix=${ovsdb_path} &&\
+  # --enable-ndebug is an optimization of the compiler
+  command => "configure --prefix=${ovsdb_path} --enable-ndebug &&\
               make &&\
               make install &&\
               rm ${ovsdb_download_path} &&\
