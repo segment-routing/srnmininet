@@ -354,7 +354,7 @@ class SRDNSProxy(SRNDaemon):
 
 class SRCtrl(SRNDaemon):
 	NAME = 'sr-ctrl'
-	DEPENDS = (OVSDB, SRNOSPF6, SRDNSProxy, Named)
+	DEPENDS = (OVSDB, SRDNSProxy, Named)
 
 	def build(self):
 		cfg = super(SRCtrl, self).build()

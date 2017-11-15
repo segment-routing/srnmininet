@@ -1,16 +1,16 @@
 from mininet.log import lg as log
 
 import ipaddress
-from ipmininet.ipnet import IPNet, BroadcastDomain
-from ipmininet.utils import L3Router, realIntfList, otherIntf
+from ipmininet.utils import L3Router, otherIntf, realIntfList
+from sr6mininet.sr6host import SR6Host
+from sr6mininet.sr6net import SR6Net
 
 from .config import OVSDB, SRNOSPF6
-from .srnhost import SRNHost
 from .srnlink import SRNTCIntf
 from .srnrouter import SRNConfig, SRNRouter
 
 
-class SRNNet(IPNet):
+class SRNNet(SR6Net):
 	"""SRN-aware Mininet"""
 
 	# TODO Setting the "intf" parameter here serves no purpose thanks to Mininet's code (=> propose a patch)
@@ -18,10 +18,11 @@ class SRNNet(IPNet):
 	             router=SRNRouter,
 	             intf=SRNTCIntf,
 	             config=SRNConfig,
-	             host=SRNHost,
+	             host=SR6Host,
+	             static_routing=False,  # Not starting quagga daemons
 	             *args, **kwargs):
-		super(SRNNet, self).__init__(*args, router=router, intf=intf, use_v4=False, use_v6=True, config=config,
-		                             host=host, **kwargs)
+		super(SRNNet, self).__init__(*args, router=router, intf=intf, config=config,
+		                             host=host, static_routing=static_routing, **kwargs)
 
 	def addLink(self, *args, **params):
 		defaults = {"intf": self.intf}
@@ -33,10 +34,6 @@ class SRNNet(IPNet):
 		self.routers = sorted(self.routers, key=lambda router: not router.controller)
 
 		super(SRNNet, self).start()
-
-		# Enable SRv6 on all hosts
-		for host in self.hosts:
-			host.enable_srv6()
 
 		# Insert the initial topology info to SRDB
 		name_ospfid_mapping = {}
@@ -59,7 +56,9 @@ class SRNNet(IPNet):
 
 		if sr_controller_ovsdb:
 			log.info('*** Inserting mapping between names and ids to OVSDB\n')
-			for name, id in name_ospfid_mapping.iteritems():
+			for r in self.routers:
+				name = r.name
+				id = name_ospfid_mapping.get(name, None)
 
 				# Add host prefixes so that sr-ctrl can find the hosts in its computations
 				prefix_list = [ipaddress.ip_interface(name_prefix_mapping[name].ip.compressed + "/64").network.with_prefixlen]  # FIXME temporary
@@ -68,11 +67,17 @@ class SRNNet(IPNet):
 						for ip6 in itf.ip6s(exclude_lls=True):
 							prefix_list.append(ipaddress.ip_interface(ip6.ip.compressed + "/64").network.with_prefixlen)  # FIXME temporary
 
-				entry = {"routerName": name, "routerId" : id,
+				entry = {"routerName": name, "routerId": id,
 				         "addr": name_prefix_mapping[name].ip.compressed,
 				         "prefix": ";".join(prefix_list),
 				         "pbsid": name_prefix_mapping[name].ip.compressed + "/64"}  # FIXME temporary
-				print(sr_controller_ovsdb.insert_entry("NameIdMapping", entry))
+				if self.static_routing:
+					entry["name"] = entry["routerName"]
+					del entry["routerId"]
+					del entry["routerName"]
+					print(sr_controller_ovsdb.insert_entry("NodeState", entry))
+				else:
+					print(sr_controller_ovsdb.insert_entry("NameIdMapping", entry))
 
 			log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
 			for link in self.links:
@@ -86,35 +91,14 @@ class SRNNet(IPNet):
 					         "bw": link.intf1.bw,
 					         "ava_bw": link.intf1.bw,
 					         "delay": link.intf1.delay}
-					entry["routerId1"] = name_ospfid_mapping[entry["name1"]]
-					entry["routerId2"] = name_ospfid_mapping[entry["name2"]]
+					if self.static_routing:
+						print(sr_controller_ovsdb.insert_entry("LinkState", entry))
+					else:
+						entry["routerId1"] = name_ospfid_mapping[entry["name1"]]
+						entry["routerId2"] = name_ospfid_mapping[entry["name2"]]
+						print(sr_controller_ovsdb.insert_entry("AvailableLink", entry))
 
-					print(sr_controller_ovsdb.insert_entry("AvailableLink", entry))
-
-	def buildFromTopo(self, topo):
-		super(SRNNet, self).buildFromTopo(topo)
-		# Add a loopback interface to each router
+		log.info('*** Individual daemon commands with netns commands\n')
 		for r in self.routers:
-			lo = self.intf('lo', node=r, moveIntfFn=lambda x, y: True)
-			lo.ip = '127.0.0.1/8'
-			lo.ip6 = '::1'
-
-	def _broadcast_domains(self):
-		"""Build the broadcast domains for this topology"""
-		domains = []
-		interfaces = {intf: False
-		              for n in self.values()
-		              if BroadcastDomain.is_domain_boundary(n)
-		              for intf in n.intfList()}
-		for intf, explored in interfaces.iteritems():
-			# the interface already belongs to a broadcast domain
-			if explored:
-				continue
-			# create a new domain and explore the interface
-			bd = BroadcastDomain(intf)
-			# Mark all explored interfaces belonging to that domain
-			for i in bd:
-				interfaces[i] = True
-				i.broadcast_domain = bd
-			domains.append(bd)
-		return domains
+			for d in r.config.daemons:
+				log.info('ip netns exec %s "%s"\n' % (r.name, d.startup_line))
