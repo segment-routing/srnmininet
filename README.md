@@ -4,9 +4,9 @@
 
 0. Setup a regular linux VM
 
-1. install modified 4.13 linux kernel (Guest additions working + soon to be merged to 4.14 mainline)
+1. install 4.14 linux kernel
 
-	a. Get the master branch of the [netnext](https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git) repository.
+	a. Get the [linux](https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git) repository and choose any version after 4.14
 
 	b. The following variables must be set at kernel compilation (in menuconfig => Networking support => Networking options => IPv6 protocol):
 		- CONFIG_IPV6_SEG6_LWTUNNEL=y
@@ -16,23 +16,6 @@
 
 	d. Get the master branch of the [iproute2](https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git) repository.
 	
-	e. See its README for installation instructions.
-
-2. Or install modified 4.9 linux kernel (Guest additions not working)
-
-	a. Apply in the same order the following patches on commit *ba6d973f78eb62ffebb32f6ef3334fc9a3b33d22* of the [netnext](https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git) repository.
-		- patches/0001-ipv6-sr-add-action-mechanisms-to-hook-on-SR-processi.patch
-		- patches/0002-ipv6-sr-add-timeouts-for-actions.patch
-
-	b. The following variables must be set at kernel compilation (in menuconfig => Networking support => Networking options => IPv6 protocol):
-		- CONFIG_IPV6_SEG6_LWTUNNEL=y
-		- CONFIG_IPV6_SEG6_INLINE=y
-		- CONFIG_IPV6_SEG6_HMAC=y
-
-	c. Compile and install the kernel (e.g., follow these [instructions](https://www.cyberciti.biz/faq/debian-ubuntu-building-installing-a-custom-linux-kernel/)).
-
-	d. Apply the patch *patches/sr6-iproute2.patch* on commit *f3f339e9590a50a0a75be88f6e32c227e8623b25* of the [iproute2](https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git) repository.
-
 	e. See its README for installation instructions.
 
 3. Guest additions

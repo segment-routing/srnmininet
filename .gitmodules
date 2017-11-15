@@ -2,3 +2,6 @@
 	path = ipmininet
 	url = git@github.com:jadinm/ipmininet.git
 	ignore = untracked
+[submodule "sr6mininet"]
+	path = sr6mininet
+	url = git@bitbucket.org:jadinm/sr6mininet.git
