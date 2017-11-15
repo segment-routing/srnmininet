@@ -1,6 +1,6 @@
-# Resources for SRN testing
+# Resources for SRN testing #
 
-## Create modified basebox
+## Create modified basebox ##
 
 0. Setup a regular linux VM
 
@@ -32,6 +32,6 @@
 
 	b. Follow [instructions](https://www.vagrantup.com/docs/virtualbox/boxes.html) to create the vagrant box with virtual box.
 
-## Launch a test topology
+## Launch a test topology ##
 
 TODO
