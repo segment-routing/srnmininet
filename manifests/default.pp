@@ -53,6 +53,7 @@ package { 'traceroute':}
 package { 'tcpdump':}
 package { 'bridge-utils':}
 package { 'mininet':}
+package { 'radvd':}
 
 # Compilation
 package { 'libreadline6':}
