@@ -17,11 +17,16 @@ class SquareAxA(SRNTopo):
 	In this example, self.square_size == 3
 	"""
 
-	def __init__(self, controller_idx=2, square_size=3, schema_tables=None, *args, **kwargs):
+	def __init__(self, controller_idx=2, square_size=3, schema_tables=None,
+	             link_delay="1ms", link_bandwidth=100, *args, **kwargs):
 		""":param controller_idx: The index of routers that will run the SR controller
-		   :param square_size: The size of the squares of routers (> 0)"""
+		   :param square_size: The size of the squares of routers (> 0)
+		   :param link_delay: The link delay
+		   :param link_bandwidth: The link bandwidth"""
 
+		self.link_delay = link_delay
 		self.square_size = square_size
+		self.link_bandwidth = link_bandwidth
 
 		if self.square_size <= 0:
 			raise Exception("Negative square size for %s" % type(self).__name__)
@@ -69,11 +74,11 @@ class SquareAxA(SRNTopo):
 
 	def addLink(self, node1, node2, **opts):
 
-		default_params1 = {"bw": 100, "delay": 1.00}
+		default_params1 = {"bw": self.link_bandwidth, "delay": self.link_delay}
 		default_params1.update(opts.get("params1", {}))
 		opts["params1"] = default_params1
 
-		default_params2 = {"bw": 100, "delay": 1.00}
+		default_params2 = {"bw": self.link_bandwidth, "delay": self.link_delay}
 		default_params2.update(opts.get("params2", {}))
 		opts["params2"] = default_params2
 
