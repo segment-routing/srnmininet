@@ -3,10 +3,10 @@ from mininet.log import lg as log
 import ipaddress
 from ipmininet.utils import L3Router, otherIntf, realIntfList
 from sr6mininet.sr6host import SR6Host
+from sr6mininet.sr6link import SR6TCIntf
 from sr6mininet.sr6net import SR6Net
 
 from .config import OVSDB, SRNOSPF6
-from .srnlink import SRNTCIntf
 from .srnrouter import SRNConfig, SRNRouter
 
 
@@ -16,18 +16,13 @@ class SRNNet(SR6Net):
 	# TODO Setting the "intf" parameter here serves no purpose thanks to Mininet's code (=> propose a patch)
 	def __init__(self,
 	             router=SRNRouter,
-	             intf=SRNTCIntf,
+	             intf=SR6TCIntf,
 	             config=SRNConfig,
 	             host=SR6Host,
 	             static_routing=False,  # Not starting quagga daemons
 	             *args, **kwargs):
 		super(SRNNet, self).__init__(*args, router=router, intf=intf, config=config,
 		                             host=host, static_routing=static_routing, **kwargs)
-
-	def addLink(self, *args, **params):
-		defaults = {"intf": self.intf}
-		defaults.update(params)
-		super(SRNNet, self).addLink(*args, **defaults)
 
 	def start(self):
 		# Controller nodes must be started first (because of ovsdb daemon)
