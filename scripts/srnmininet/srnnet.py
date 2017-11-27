@@ -79,13 +79,14 @@ class SRNNet(SR6Net):
 				if L3Router.is_l3router_intf(link.intf1) and L3Router.is_l3router_intf(link.intf2):
 
 					# TODO Links should be oriented in the future !
+					ms_delay = int(link.intf1.delay.split("ms")[0])
 					entry = {"name1": link.intf1.node.name, "name2": link.intf2.node.name,
 					         "addr1": str(link.intf1.ip6s(exclude_lls=True).next().ip),  # Can raise an exception if none exists
 					         "addr2": str(link.intf2.ip6s(exclude_lls=True).next().ip),  # Can raise an exception if none exists
 					         "metric": link.intf1.igp_metric,
 					         "bw": link.intf1.bw,
 					         "ava_bw": link.intf1.bw,
-					         "delay": link.intf1.delay}
+					         "delay": ms_delay}
 					if self.static_routing:
 						print(sr_controller_ovsdb.insert_entry("LinkState", entry))
 					else:
