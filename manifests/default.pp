@@ -13,9 +13,8 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
-$iproute2_version = "v4.14.1"
-$iproute2_git_repo = "git://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git"
-$iproute2_cwd = "/home/vagrant/iproute2"
+$ipmininet_path = "/home/vagrant/SRv6/dns-ctrl-resources/ipmininet"
+$sr6mininet_path = "/home/vagrant/SRv6/dns-ctrl-resources/sr6mininet"
 
 $default_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -29,7 +28,6 @@ Exec { path => $default_path }
 exec { 'apt-update':
   command => 'apt-get update',
 }
-
 
 # Python packages
 package { 'python-setuptools':}
@@ -79,6 +77,10 @@ package { 'xterm':}
 package { 'man':}
 package { 'git':}
 package { 'valgrind':}
+package { 'vim':}
+
+# SSH redirection
+package { 'xauth':}
 
 # Locale settings
 exec { 'locales':
@@ -87,6 +89,8 @@ exec { 'locales':
 }
 
 # Main softwares
+
+package { 'bind9':}
 
 $compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'], Package['libc-ares-dev'],
                 Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'], Package['texinfo']]
@@ -131,21 +135,23 @@ exec { 'jansson':
               make install;"
 }
 
-exec { 'iproute2-download':
-  require => [ Exec['apt-update'] ],
-  creates => $iproute2_cwd,
-  command => "git clone ${iproute2_git_repo} ${iproute2_cwd} &&\
-              git checkout ${iproute2_version};",
+exec { 'ipmininet':
+  require => [ Exec['apt-update'], Package['mininet'], Package['mako'] ],
+  command => "pip install -e ${ipmininet_path}",
 }
-# Somehow using TMPDIR as bash variable is a problem in the vagrant box
-exec { 'iproute2':
-  require => [ Exec['apt-update'], Exec['iproute2-download'] ] + $compilation,
-  creates => "/home/vagrant/.newiproute",
-  cwd => $iproute2_cwd,
-  path => "${default_path}:${iproute2_cwd}",
-  command => "sed -i -e 's/TMPDIR/TEMPDIR/g' ${iproute2_cwd}/configure &&\
-              configure &&\
-              make &&\
-              make install &&\
-              touch /home/vagrant/.newiproute;",
+
+exec { 'sr6mininet':
+  require => [ Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet'] ],
+  command => "pip install -e ${sr6mininet_path}",
+}
+
+# Quagga group
+group { 'quagga':
+  ensure => 'present',
+}
+user { 'vagrant':
+  groups => 'quagga',
+}
+user { 'root':
+  groups => 'quagga',
 }
