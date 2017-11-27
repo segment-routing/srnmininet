@@ -74,6 +74,8 @@ with open(os.path.join(args.src_dir, "sr.ovsschema"), "r") as fileobj:
 
 # Start network
 net = SRNNet(topo=TOPOS[args.topo](**topo_args), **net_args)
-net.start()
-IPCLI(net)
-net.stop()
+try:
+	net.start()
+	IPCLI(net)
+finally:
+	net.stop()
