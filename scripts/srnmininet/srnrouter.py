@@ -100,3 +100,12 @@ class SRNRouter(SR6Router):
 			# Busy-wait if the daemon needs some time before being started
 			while not d.has_started():
 				time.sleep(.001)
+
+		# Install SRv6 Routes
+		if self.srv6_routes is not None:
+			for route in self.srv6_routes:
+				code = route.install()
+				if code:
+					lg.error('SRv6 install failed, aborting!')
+					mininet.clean.cleanup()
+					sys.exit(1)

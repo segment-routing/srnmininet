@@ -13,13 +13,12 @@ from .srnrouter import SRNConfig, SRNRouter
 class SRNNet(SR6Net):
 	"""SRN-aware Mininet"""
 
-	# TODO Setting the "intf" parameter here serves no purpose thanks to Mininet's code (=> propose a patch)
 	def __init__(self,
 	             router=SRNRouter,
 	             intf=SR6TCIntf,
 	             config=SRNConfig,
 	             host=SR6Host,
-	             static_routing=False,  # Not starting quagga daemons
+	             static_routing=False,
 	             *args, **kwargs):
 		super(SRNNet, self).__init__(*args, router=router, intf=intf, config=config,
 		                             host=host, static_routing=static_routing, **kwargs)
