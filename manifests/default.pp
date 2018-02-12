@@ -1,4 +1,3 @@
-
 $ovsdb_version = "2.8.1"
 $ovsdb_release_url = "http://openvswitch.org/releases/openvswitch-${ovsdb_version}.tar.gz"
 $ovsdb_root_dir = "/home/vagrant"
@@ -20,8 +19,8 @@ $default_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 Package {
   allow_virtual => true,
-  ensure => installed,
-  require => Exec['apt-update'],
+  ensure        => installed,
+  require       => Exec['apt-update'],
 }
 Exec { path => $default_path }
 
@@ -30,57 +29,57 @@ exec { 'apt-update':
 }
 
 # Python packages
-package { 'python-setuptools':}
-package { 'python-pip':}
+package { 'python-setuptools': }
+package { 'python-pip': }
 package { 'py2-ipaddress':
-  require => Package['python-pip'],
+  require  => Package['python-pip'],
   provider => 'pip',
 }
 package { 'mako':
-  require => Package['python-pip'],
+  require  => Package['python-pip'],
   provider => 'pip',
 }
 package { 'six':
-  require => Package['python-pip'],
+  require  => Package['python-pip'],
   provider => 'pip',
 }
 
 # Networking
-package { 'wireshark':}
-package { 'traceroute':}
-package { 'tcpdump':}
-package { 'bridge-utils':}
-package { 'mininet':}
-package { 'radvd':}
+package { 'wireshark': }
+package { 'traceroute': }
+package { 'tcpdump': }
+package { 'bridge-utils': }
+package { 'mininet': }
+package { 'radvd': }
 
 # Compilation
-package { 'libreadline6':}
+package { 'libreadline6': }
 package { 'libreadline6-dev':
   require => [ Exec['apt-update'], Package['libreadline6'] ],
 }
-package { 'gawk':}
-package { 'automake':}
+package { 'gawk': }
+package { 'automake': }
 package { 'libtool':
   require => [ Exec['apt-update'], Package['m4'], Package['automake'] ],
 }
-package { 'm4':}
-package { 'bison':}
-package { 'flex':}
-package { 'pkg-config':}
-package { 'dia':}
-package { 'texinfo':}
-package { 'libc-ares-dev':}
-package { 'cmake':}
+package { 'm4': }
+package { 'bison': }
+package { 'flex': }
+package { 'pkg-config': }
+package { 'dia': }
+package { 'texinfo': }
+package { 'libc-ares-dev': }
+package { 'cmake': }
 
 # Miscellaneous
-package { 'xterm':}
-package { 'man':}
-package { 'git':}
-package { 'valgrind':}
-package { 'vim':}
+package { 'xterm': }
+package { 'man': }
+package { 'git': }
+package { 'valgrind': }
+package { 'vim': }
 
 # SSH redirection
-package { 'xauth':}
+package { 'xauth': }
 
 # Locale settings
 exec { 'locales':
@@ -90,10 +89,11 @@ exec { 'locales':
 
 # Main softwares
 
-package { 'bind9':}
+package { 'bind9': }
 
-$compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'], Package['libc-ares-dev'],
-                Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'], Package['texinfo']]
+$compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'], Package[
+  'libc-ares-dev'],
+  Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'], Package['texinfo']]
 
 exec { 'ovsdb-download':
   require => [ Exec['apt-update'] ],
@@ -103,9 +103,9 @@ exec { 'ovsdb-download':
 }
 exec { 'ovsdb':
   require => [ Exec['apt-update'], Exec['ovsdb-download'], Package['six'] ] + $compilation,
-  cwd => $ovsdb_source_path,
+  cwd     => $ovsdb_source_path,
   creates => $ovsdb_path,
-  path => "${default_path}:${ovsdb_source_path}",
+  path    => "${default_path}:${ovsdb_source_path}",
   # --enable-ndebug is an optimization of the compiler
   command => "configure --prefix=${ovsdb_path} --enable-ndebug &&\
               make &&\
@@ -127,9 +127,9 @@ exec { 'jansson-download':
 }
 exec { 'jansson':
   require => [ Exec['apt-update'], Exec['jansson-download'] ] + $compilation,
-  cwd => $jansson_source_path,
+  cwd     => $jansson_source_path,
   creates => $jansson_path,
-  path => "${default_path}:${jansson_source_path}",
+  path    => "${default_path}:${jansson_source_path}",
   command => "configure &&\
               make &&\
               make install;"
