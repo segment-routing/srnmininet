@@ -66,7 +66,7 @@ class SquareAxA(SRNTopo):
         self.addLink(self.grid[0], client)
         self.addLink(self.grid[-1], server)
 
-        self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0], self.grid[-1]),
+        self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0],),
                                      sr_controller=self.controllers[0], schema_tables=self.schema_tables))
 
         super(SquareAxA, self).build(*args, **kwargs)
