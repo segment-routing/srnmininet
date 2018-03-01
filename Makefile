@@ -2,8 +2,7 @@
 SCRIPTS=scripts/
 CONFIG_HELPER=cfg_helper.py
 
-VIRT_DIR=../srv6-virtenv
-SRC_DIR="../dns-ctrl-uc/sigcomm/sdnres-sigcomm/"
+SRC_DIR="srn/"
 SUBDIR=$(shell date "+%d-%m-%Y_%Z_%H:%M:%S.%N")/
 # Problems may arise if it is a shared folder
 LOG_DIR=../../log/$(SUBDIR)/

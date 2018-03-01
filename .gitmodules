@@ -5,3 +5,6 @@
 [submodule "sr6mininet"]
 	path = sr6mininet
 	url = git@bitbucket.org:jadinm/sr6mininet.git
+[submodule "srn"]
+	path = srn
+	url = git@github.com:segment-routing/srn.git
