@@ -135,7 +135,7 @@ class SRNOSPF6(OSPF6):
 
         cfg.ovsdb_adv = self.options.ovsdb_adv
         if cfg.ovsdb_adv:
-            sr_controller_ip, ovsdb = find_closest_intf(self._node, self._node.sr_controller)
+            sr_controller_ip, ovsdb = find_controller(self._node, self._node.sr_controller)
             cfg.ovsdb_server = ovsdb.remote_server_to_client(sr_controller_ip)
             cfg.ovsdb_database = ovsdb.options.database
             cfg.ovsdb_client = ovsdb.options.ovsdb_client
@@ -287,7 +287,7 @@ class SRNDaemon(Daemon):
     def build(self):
         cfg = super(SRNDaemon, self).build()
 
-        sr_controller_ip, ovsdb = find_closest_intf(self._node, self._node.sr_controller)
+        sr_controller_ip, ovsdb = find_controller(self._node, self._node.sr_controller)
         self.options.sr_controller_ip = sr_controller_ip
         cfg.ovsdb_server = ovsdb.remote_server_to_client(sr_controller_ip)
         cfg.ovsdb_database = ovsdb.options.database
@@ -428,7 +428,7 @@ def cost_intf(intf):
     return intf.delay if intf.delay else SRRouted.DEFAULT_COST
 
 
-def find_closest_intf(base, sr_controller):
+def find_controller(base, sr_controller):
     if base.name == sr_controller:
         return (base.intf("lo").ip6 or "::1"), ovsdb_daemon(base)
 
@@ -445,8 +445,11 @@ def find_closest_intf(base, sr_controller):
         visited.add(intf)
         for peer_intf in intf.broadcast_domain.routers:
             if peer_intf.node.name == sr_controller:
-                ip = peer_intf.ip
-                return (ip if ip else peer_intf.ip6), ovsdb_daemon(peer_intf.node)
+                ip6s = peer_intf.node.intf("lo").ip6s(exclude_lls=True)
+                for ip6 in ip6s:
+                    if ip6.ip.compressed != "::1":
+                        return ip6.ip, ovsdb_daemon(peer_intf.node)
+                return peer_intf.ip6, ovsdb_daemon(peer_intf.node)
             elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
                 for x in realIntfList(peer_intf.node):
                     heapq.heappush(to_visit, (cost + cost_intf(x), x))
