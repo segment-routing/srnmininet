@@ -5,7 +5,7 @@ CONFIG_HELPER=cfg_helper.py
 SRC_DIR="srn/"
 SUBDIR=$(shell date "+%d-%m-%Y_%Z_%H:%M:%S.%N")/
 # Problems may arise if it is a shared folder
-LOG_DIR=../../log/$(SUBDIR)/
+LOG_DIR=../log/$(SUBDIR)/
 
 PIDFILE=cfg_helper.pid
 

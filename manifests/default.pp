@@ -12,8 +12,8 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
-$ipmininet_path = "/home/vagrant/SRv6/dns-ctrl-resources/ipmininet"
-$sr6mininet_path = "/home/vagrant/SRv6/dns-ctrl-resources/sr6mininet"
+$ipmininet_path = "/home/vagrant/srn-resources/ipmininet"
+$sr6mininet_path = "/home/vagrant/srn-resources/sr6mininet"
 
 $default_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
