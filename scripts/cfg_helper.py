@@ -12,7 +12,7 @@ from srnmininet.srnnet import SRNNet
 topo_classes = [SquareAxA]
 TOPOS = {topo.__name__: topo for topo in topo_classes}
 
-components = ["sr-ctrl", "sr-routed", "sr-dnsproxy", "sr-dnsfwd", "sr-nsd"]
+components = ["sr-ctrl", "sr-routed", "sr-dnsproxy", "sr-nsd"]
 
 
 # Argument parsing
