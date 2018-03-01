@@ -1,10 +1,10 @@
 [submodule "ipmininet"]
 	path = ipmininet
-	url = git@github.com:jadinm/ipmininet.git
+	url = https://github.com/jadinm/ipmininet.git
 	ignore = untracked
 [submodule "sr6mininet"]
 	path = sr6mininet
-	url = git@bitbucket.org:jadinm/sr6mininet.git
+	url = https://bitbucket.org/jadinm/sr6mininet.git
 [submodule "srn"]
 	path = srn
-	url = git@github.com:segment-routing/srn.git
+	url = https://github.com/segment-routing/srn.git
