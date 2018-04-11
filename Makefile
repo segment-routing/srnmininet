@@ -2,16 +2,13 @@
 SCRIPTS=scripts/
 CONFIG_HELPER=cfg_helper.py
 
-SRC_DIR="~/srn/"
+SRC_DIR=$(CURDIR)/../srn/
 SUBDIR=$(shell date "+%d-%m-%Y_%Z_%H:%M:%S.%N")/
 # Problems may arise if it is a shared folder
 LOG_DIR=../log/$(SUBDIR)/
 
 TOPOLOGY=SquareAxA
 LOG_LEVEL=info
-
-.PHONY: compile clean start
-.DEFAULT_GOAL: light-start
 
 start:
 	sudo bash -c 'source /etc/profile && python $(SCRIPTS)/$(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR)'
@@ -21,3 +18,6 @@ light-start:
 
 sr-testdns:
 	# TODO Add patch to sr-routed
+
+.PHONY: light-start clean start
+.DEFAULT_GOAL: light-start
