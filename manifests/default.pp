@@ -174,7 +174,7 @@ exec { 'srn-download':
 }
 
 exec { 'srn':
-  require => [ Exec['jansson'], Exec['zlog'], Exec['srn-download'] ],
+  require => [ Exec['jansson'], Exec['srn-download'] ],
   creates => "${srn_path}/bin/",
   cwd     => $srn_path,
   path    => "${default_path}:${srn_path}",
