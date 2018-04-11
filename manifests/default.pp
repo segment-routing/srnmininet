@@ -1,4 +1,4 @@
-$ovsdb_version = "2.8.1"
+$ovsdb_version = "2.9.0"
 $ovsdb_release_url = "http://openvswitch.org/releases/openvswitch-${ovsdb_version}.tar.gz"
 $ovsdb_root_dir = "/home/vagrant"
 $ovsdb_source_path = "${ovsdb_root_dir}/openvswitch-${ovsdb_version}"
@@ -182,9 +182,9 @@ exec { 'zlog-download':
 }
 exec { 'zlog':
   require => [ Exec['apt-update'], Exec['zlog-download'] ] + $compilation,
-  cwd => $zlog_source_path,
+  cwd     => $zlog_source_path,
   creates => $zlog_path,
-  path => "${default_path}:${zlog_source_path}",
+  path    => "${default_path}:${zlog_source_path}",
   command => "make &&\
               make install &&\
               /sbin/ldconfig -v &&\
@@ -200,10 +200,17 @@ exec { 'srn-download':
 }
 
 exec { 'srn':
-  require => [ Exec['jansson'], Exec['zlog'], Package['srn-download'] ],
-  creates => "${srn_path}/sr-ctrl/sr-ctrl",
+  require => [ Exec['jansson'], Exec['zlog'], Exec['srn-download'] ],
+  creates => "${srn_path}/bin/",
+  cwd     => $srn_path,
   path    => "${default_path}:${srn_path}",
-  command => "make",
+  command => "make &&\
+              echo \"# SRN binaries\" >> /etc/profile &&\
+              echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /etc/profile &&\
+              echo \"alias sudo=\'sudo env \\\"PATH=\\\$PATH\\\"\'\" >> /etc/profile &&\
+              echo \"# SRN binaries\" >> /root/.bashrc &&\
+              echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /root/.bashrc &&\
+              PATH=${ovsdb_path}/sbin:${ovsdb_path}/bin:\$PATH;",
 }
 
 # Quagga group
@@ -219,5 +226,6 @@ user { 'root':
 
 # Activate ECN
 exec { 'ecn':
-  command => "if ! cat /etc/sysctl.conf | grep net.ipv4.tcp_ecn=1; then echo \"net.ipv4.tcp_ecn=1\" >> /etc/sysctl.conf; fi;",
+  path    => "${default_path}:${srn_path}",
+  command => "bash -c 'if ! cat /etc/sysctl.conf | grep net.ipv4.tcp_ecn=1; then echo \"net.ipv4.tcp_ecn=1\" >> /etc/sysctl.conf; fi;'",
 }
