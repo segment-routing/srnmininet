@@ -1,9 +1,0 @@
-[submodule "ipmininet"]
-	path = ipmininet
-	url = https://github.com/oliviertilmans/ipmininet.git
-[submodule "sr6mininet"]
-	path = sr6mininet
-	url = https://bitbucket.org/jadinm/sr6mininet.git
-[submodule "srn"]
-	path = srn
-	url = https://github.com/segment-routing/srn.git
