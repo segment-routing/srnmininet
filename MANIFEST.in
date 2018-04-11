@@ -1,1 +1,1 @@
-recursive-include sr6mininet/router *
+recursive-include srnmininet/config *

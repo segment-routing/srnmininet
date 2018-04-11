@@ -12,8 +12,21 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
-$ipmininet_path = "/home/vagrant/srn-resources/ipmininet"
-$sr6mininet_path = "/home/vagrant/srn-resources/sr6mininet"
+$zlog_version = "1.2.12"
+$zlog_release_url = "https://github.com/HardySimpson/zlog/archive/${zlog_version}.tar.gz"
+$zlog_root_dir = "/home/vagrant"
+$zlog_source_path = "${zlog_root_dir}/zlog-${zlog_version}"
+$zlog_download_path = "${zlog_source_path}.tar.gz"
+$zlog_path = "/usr/local/lib/libzlog.so"
+
+$ipmininet_repo = "https://github.com/oliviertilmans/ipmininet.git"
+$ipmininet_path = "/home/vagrant/ipmininet"
+$sr6mininet_repo = "https://bitbucket.org/jadinm/sr6mininet.git"
+$sr6mininet_path = "/home/vagrant/sr6mininet"
+
+$srnmininet_path = "/home/vagrant/srnmininet"
+$srn_repo = "https://github.com/segment-routing/srn.git"
+$srn_path = "/home/vagrant/srn"
 
 $default_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -87,7 +100,33 @@ exec { 'locales':
   command => "locale-gen fr_BE.UTF-8; update-locale",
 }
 
-# Main softwares
+# IPMininet
+
+exec { 'ipmininet-download':
+  require => Package['git'],
+  creates => $ipmininet_path,
+  command => "git clone ${ipmininet_repo} ${ipmininet_path}",
+}
+exec { 'ipmininet':
+  require => [ Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet-download'] ],
+  command => "pip install -e ${ipmininet_path}",
+}
+exec { 'sr6mininet-download':
+  require => Package['git'],
+  creates => $sr6mininet_path,
+  command => "git clone ${sr6mininet_repo} ${sr6mininet_path}",
+}
+exec { 'sr6mininet':
+  require => [ Exec['ipmininet'], Exec['sr6mininet-download'] ],
+  command => "pip install -e ${sr6mininet_path}",
+}
+
+exec { 'srnmininet':
+  require => Exec['sr6mininet'],
+  command => "pip install -e ${srnmininet_path}",
+}
+
+# SRN
 
 package { 'bind9': }
 
@@ -135,14 +174,36 @@ exec { 'jansson':
               make install;"
 }
 
-exec { 'ipmininet':
-  require => [ Exec['apt-update'], Package['mininet'], Package['mako'] ],
-  command => "pip install -e ${ipmininet_path}",
+exec { 'zlog-download':
+  require => Exec['apt-update'],
+  creates => $zlog_source_path,
+  command => "wget -O - ${zlog_release_url} > ${zlog_download_path} &&\
+              tar -xvzf ${zlog_download_path} -C ${zlog_root_dir};"
+}
+exec { 'zlog':
+  require => [ Exec['apt-update'], Exec['zlog-download'] ] + $compilation,
+  cwd => $zlog_source_path,
+  creates => $zlog_path,
+  path => "${default_path}:${zlog_source_path}",
+  command => "make &&\
+              make install &&\
+              /sbin/ldconfig -v &&\
+              rm ${zlog_download_path};"
+}
+package { 'libmnl-dev': }
+package { 'libnetfilter-queue-dev': }
+
+exec { 'srn-download':
+  require => Package['git'],
+  creates => $srn_path,
+  command => "git clone --recursive ${srn_repo} ${srn_path}",
 }
 
-exec { 'sr6mininet':
-  require => [ Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet'] ],
-  command => "pip install -e ${sr6mininet_path}",
+exec { 'srn':
+  require => [ Exec['jansson'], Exec['zlog'], Package['srn-download'] ],
+  creates => "${srn_path}/sr-ctrl/sr-ctrl",
+  path    => "${default_path}:${srn_path}",
+  command => "make",
 }
 
 # Quagga group
@@ -154,4 +215,9 @@ user { 'vagrant':
 }
 user { 'root':
   groups => 'quagga',
+}
+
+# Activate ECN
+exec { 'ecn':
+  command => "if ! cat /etc/sysctl.conf | grep net.ipv4.tcp_ecn=1; then echo \"net.ipv4.tcp_ecn=1\" >> /etc/sysctl.conf; fi;",
 }

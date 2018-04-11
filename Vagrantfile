@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
 	# boxes at https://atlas.hashicorp.com/search.
 	config.vm.box = "segment-routing/ubuntu-16.04"
 
-	config.vm.synced_folder ".", "/home/vagrant/srn-resources"
+	config.vm.synced_folder ".", "/home/vagrant/srnmininet"
 
 	config.vm.provision "shell", inline: <<-SHELL
 		if ! which puppet; then
