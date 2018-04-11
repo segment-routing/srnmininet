@@ -12,13 +12,6 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
-$zlog_version = "1.2.12"
-$zlog_release_url = "https://github.com/HardySimpson/zlog/archive/${zlog_version}.tar.gz"
-$zlog_root_dir = "/home/vagrant"
-$zlog_source_path = "${zlog_root_dir}/zlog-${zlog_version}"
-$zlog_download_path = "${zlog_source_path}.tar.gz"
-$zlog_path = "/usr/local/lib/libzlog.so"
-
 $ipmininet_repo = "https://github.com/oliviertilmans/ipmininet.git"
 $ipmininet_path = "/home/vagrant/ipmininet"
 $sr6mininet_repo = "https://bitbucket.org/jadinm/sr6mininet.git"
@@ -174,25 +167,6 @@ exec { 'jansson':
               make install;"
 }
 
-exec { 'zlog-download':
-  require => Exec['apt-update'],
-  creates => $zlog_source_path,
-  command => "wget -O - ${zlog_release_url} > ${zlog_download_path} &&\
-              tar -xvzf ${zlog_download_path} -C ${zlog_root_dir};"
-}
-exec { 'zlog':
-  require => [ Exec['apt-update'], Exec['zlog-download'] ] + $compilation,
-  cwd     => $zlog_source_path,
-  creates => $zlog_path,
-  path    => "${default_path}:${zlog_source_path}",
-  command => "make &&\
-              make install &&\
-              /sbin/ldconfig -v &&\
-              rm ${zlog_download_path};"
-}
-package { 'libmnl-dev': }
-package { 'libnetfilter-queue-dev': }
-
 exec { 'srn-download':
   require => Package['git'],
   creates => $srn_path,
@@ -222,10 +196,4 @@ user { 'vagrant':
 }
 user { 'root':
   groups => 'quagga',
-}
-
-# Activate ECN
-exec { 'ecn':
-  path    => "${default_path}:${srn_path}",
-  command => "bash -c 'if ! cat /etc/sysctl.conf | grep net.ipv4.tcp_ecn=1; then echo \"net.ipv4.tcp_ecn=1\" >> /etc/sysctl.conf; fi;'",
 }
