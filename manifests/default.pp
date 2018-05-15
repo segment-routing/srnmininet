@@ -148,8 +148,7 @@ exec { 'ovsdb':
               echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /etc/profile &&\
               echo \"# ovsdb binaries\" >> /root/.bashrc &&\
               echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /root/.bashrc &&\
-              sed -i '/secure_path/d' /etc/sudoers &&\
-              PATH=${ovsdb_path}/sbin:${ovsdb_path}/bin:\$PATH;",
+              sed -i '/secure_path/d' /etc/sudoers",
 }
 
 exec { 'jansson-download':
@@ -184,8 +183,7 @@ exec { 'srn':
               echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /etc/profile &&\
               echo \"# SRN binaries\" >> /root/.bashrc &&\
               echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /root/.bashrc &&\
-              sed -i '/secure_path/d' /etc/sudoers &&\
-              PATH=${srn_path}/sbin:${srn_path}/bin:\$PATH;",
+              sed -i '/secure_path/d' /etc/sudoers",
 }
 
 # Quagga group
