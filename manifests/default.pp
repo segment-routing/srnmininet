@@ -101,13 +101,13 @@ exec { 'ipmininet-download':
   command => "git clone ${ipmininet_repo} ${ipmininet_path}",
 }
 exec { 'ipmininet':
-  require => [ Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet-download'] ],
+  require => [ Exec['locales'], Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet-download'] ],
   command => "pip install -e ${ipmininet_path}",
 }
 exec { 'sr6mininet-download':
   require => Package['git'],
   creates => $sr6mininet_path,
-  command => "git clone ${sr6mininet_repo} ${sr6mininet_path}",
+  command => "git clone ${sr6mininet_repo} ${sr6mininet_path} && chown -R vagrant:vagrant ${sr6mininet_path}",
 }
 exec { 'sr6mininet':
   require => [ Exec['ipmininet'], Exec['sr6mininet-download'] ],
@@ -142,12 +142,13 @@ exec { 'ovsdb':
   command => "configure --prefix=${ovsdb_path} --enable-ndebug &&\
               make &&\
               make install &&\
+              chown -R vagrant:vagrant ${ovsdb_path} &&\
               rm ${ovsdb_download_path} &&\
               echo \"# ovsdb binaries\" >> /etc/profile &&\
               echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /etc/profile &&\
-              echo \"alias sudo=\'sudo env \\\"PATH=\\\$PATH\\\"\'\" >> /etc/profile &&\
               echo \"# ovsdb binaries\" >> /root/.bashrc &&\
               echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /root/.bashrc &&\
+              sed -i '/secure_path/d' /etc/sudoers &&\
               PATH=${ovsdb_path}/sbin:${ovsdb_path}/bin:\$PATH;",
 }
 
@@ -181,10 +182,10 @@ exec { 'srn':
   command => "make &&\
               echo \"# SRN binaries\" >> /etc/profile &&\
               echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /etc/profile &&\
-              echo \"alias sudo=\'sudo env \\\"PATH=\\\$PATH\\\"\'\" >> /etc/profile &&\
               echo \"# SRN binaries\" >> /root/.bashrc &&\
               echo \"PATH=\\\"${srn_path}/bin:\\\$PATH\\\"\" >> /root/.bashrc &&\
-              PATH=${ovsdb_path}/sbin:${ovsdb_path}/bin:\$PATH;",
+              sed -i '/secure_path/d' /etc/sudoers &&\
+              PATH=${srn_path}/sbin:${srn_path}/bin:\$PATH;",
 }
 
 # Quagga group
