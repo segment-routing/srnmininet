@@ -3,7 +3,7 @@ $ovsdb_release_url = "http://openvswitch.org/releases/openvswitch-${ovsdb_versio
 $ovsdb_root_dir = "/home/vagrant"
 $ovsdb_source_path = "${ovsdb_root_dir}/openvswitch-${ovsdb_version}"
 $ovsdb_download_path = "${ovsdb_source_path}.tar.gz"
-$ovsdb_path = "/home/vagrant/ovsdb"
+$ovsdb_path = "/usr/sbin/ovsdb-server"
 
 $jansson_version = "2.10"
 $jansson_release_url = "http://www.digip.org/jansson/releases/jansson-${jansson_version}.tar.gz"
@@ -138,17 +138,10 @@ exec { 'ovsdb':
   cwd     => $ovsdb_source_path,
   creates => $ovsdb_path,
   path    => "${default_path}:${ovsdb_source_path}",
-  # --enable-ndebug is an optimization of the compiler
-  command => "configure --prefix=${ovsdb_path} --enable-ndebug &&\
+  command => "configure &&\
               make &&\
               make install &&\
-              chown -R vagrant:vagrant ${ovsdb_path} &&\
-              rm ${ovsdb_download_path} &&\
-              echo \"# ovsdb binaries\" >> /etc/profile &&\
-              echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /etc/profile &&\
-              echo \"# ovsdb binaries\" >> /root/.bashrc &&\
-              echo \"PATH=\\\"${ovsdb_path}/bin:${ovsdb_path}/sbin:\\\$PATH\\\"\" >> /root/.bashrc &&\
-              sed -i '/secure_path/d' /etc/sudoers",
+              rm ${ovsdb_download_path}",
 }
 
 exec { 'jansson-download':
