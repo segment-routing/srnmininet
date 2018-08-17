@@ -1,6 +1,7 @@
 import heapq
 import json
 import os
+import re
 import time
 from copy import deepcopy
 from mininet.log import lg
@@ -421,13 +422,91 @@ class SRRouted(SRNDaemon):
     PRIO = 1  # If OVSDB is on the same router
     DEFAULT_COST = 0.000001
 
+    def __init__(self, node, **kwargs):
+        super(SRRouted, self).__init__(node, **kwargs)
+        self.localsid_idx = -1
+        self.localsid_name = None
+
     def build(self):
         cfg = super(SRRouted, self).build()
         cfg.router_name = self._node.name
-        cfg.iproute = "ip -6"
-        cfg.vnhpref = "ffff::"
-        cfg.ingress_iface = "lo"
+        cfg.ingress_iface = realIntfList(self._node)[0]
+        cfg.localsid = self.add_localsid_table()
         return cfg
+
+    def rt_tables_line(self):
+        return "%d\t%s\n" % (self.localsid_idx, self.localsid_name)
+
+    def add_localsid_table(self):
+
+        # Create name and index of the node local SID table
+
+        reg = re.compile("([0-9]+)\t+(.+)")
+        reserved_ids = []
+        reserved_names = []
+        with open("/etc/iproute2/rt_tables") as fileobj:
+            for line in fileobj:
+                if len(line) == 0 or line[0] == "#":
+                    continue
+                match = reg.search(line)
+                if match is not None:
+                    reserved_ids.append(int(match.group(1)))
+                    reserved_names.append(str(match.group(2)))
+
+        localsid_name = "%s.%s" % (self._node.name, "localsid")
+        i = 0
+        while localsid_name in reserved_names:
+            localsid_name = "%s.%s.%d" % (self._node.name, "localsid", i)
+            i += 1
+        self.localsid_name = localsid_name
+
+        i = 1
+        while i < 2**32:
+            if i not in reserved_ids:
+                self.localsid_idx = i
+                break
+            i += 1
+
+        if self.localsid_idx > 0:
+            with open("/etc/iproute2/rt_tables", "a+") as fileobj:
+                fileobj.write(self.rt_tables_line())
+
+            # Add a rule so that traffic directed to loopback prefix is transferred to the localsid table
+
+            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True):
+                if ip6.ip.compressed != "::1":
+                    cmd = ["ip", "-6", "rule", "add", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
+                    self._node.cmd(cmd)
+
+        return self.localsid_idx
+
+    def cleanup(self):
+
+        if self.localsid_idx > 0:
+            # Flush all the table routes
+            cmd = ["ip", "-6", "route", "flush", "table", self.localsid_name]
+            try:
+                self._node.cmd(cmd)
+            except Exception:
+                lg.debug("Cannot flush routing table %s", self.localsid_name)
+
+            # Remove the rules pointing to the table
+            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True):
+                if ip6.ip.compressed != "::1":
+                    cmd = ["ip", "-6", "rule", "del", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
+                    try:
+                        self._node.cmd(cmd)
+                    except Exception:
+                        pass
+
+            # Clean the entry in the config file
+            with open("/etc/iproute2/rt_tables") as fileobj:
+                content = fileobj.readlines()
+            with open("/etc/iproute2/rt_tables", "w") as fileobj:
+                for line in filter(lambda x: self.rt_tables_line() != x, content):
+                    fileobj.write(line)
+
+        super(SRRouted, self).cleanup()
 
 
 def ovsdb_daemon(node):
