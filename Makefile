@@ -3,7 +3,7 @@ SCRIPTS=scripts/
 CONFIG_HELPER=cfg_helper.py
 
 SRC_DIR=$(CURDIR)/../srn/
-SUBDIR=$(shell date "+%d-%m-%Y_%Z_%H:%M:%S.%N")/
+SUBDIR=$(shell date "+%d-%m-%Y_%Z-%H_%M_%S.%N")/
 # Problems may arise if it is a shared folder
 LOG_DIR=../log/$(SUBDIR)/
 
