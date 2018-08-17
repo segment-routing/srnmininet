@@ -81,4 +81,4 @@ class SquareAxA(SRNTopo):
         default_params2.update(opts.get("params2", {}))
         opts["params2"] = default_params2
 
-        super(SRNTopo, self).addLink(node1, node2, **opts)
+        return super(SRNTopo, self).addLink(node1, node2, **opts)

@@ -10,14 +10,14 @@ class SRNTopo(IPTopo):
 
         self.access_routers = []
         self.cwd = cwd
-        self.controllers = controllers if not isinstance(controllers, basestring) else list(controllers)
+        self.controllers = [controllers] if isinstance(controllers, str) else list(controllers)
 
         super(SRNTopo, self).__init__(*args, **kwargs)
 
     def addRouter(self, name, controller=False, **params):
         if self.cwd is not None and "cwd" not in params:
             params["cwd"] = os.path.join(self.cwd, name)
-        super(SRNTopo, self).addRouter(name, controller=controller, **params)
+        return super(SRNTopo, self).addRouter(name, controller=controller, **params)
 
     def addLink(self, node1, node2, **opts):
 
@@ -31,4 +31,4 @@ class SRNTopo(IPTopo):
         if access_router:
             self.getNodeInfo(access_router, access_router, True)
 
-        super(SRNTopo, self).addLink(node1, node2, **opts)
+        return super(SRNTopo, self).addLink(node1, node2, **opts)
