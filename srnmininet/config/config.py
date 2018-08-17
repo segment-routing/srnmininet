@@ -82,7 +82,17 @@ class OVSDB(Daemon):
     def has_started(self):
         # We override this such that we wait until we have the command socket
         if os.path.exists(self._file('ctl')):
-            time.sleep(1)  # FIXME Ugly but no better idea
+            cmd = ["ovsdb-client", "list-dbs", "tcp:[::1]:6640"]
+            i = 0
+            while True:
+                i += 1
+                try:
+                    self._node.cmd(cmd)
+                    time.sleep(1)
+                    break
+                except Exception:
+                    if i > 90:
+                        raise Exception("Cannot connect to OVSDB server")
             return True
         return False
 
@@ -118,9 +128,9 @@ class OVSDB(Daemon):
 
     def insert_entry(self, table_name, content):
         insert = self.OVSDB_INSERT_FORMAT % (self.options.database, json.dumps(content), table_name)
-        return self._node.cmd("%s transact %s '%s'" % (self.options.ovsdb_client,
-                                                       self._remote_server_to_client().next(),
-                                                       insert))
+        cmd = "%s transact %s '%s'" % (self.options.ovsdb_client, self._remote_server_to_client().next(), insert)
+        lg.debug(cmd)
+        return self._node.cmd(cmd)
 
 
 class SRNOSPF6(OSPF6):
