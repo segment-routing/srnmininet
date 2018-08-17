@@ -10,14 +10,14 @@ LOG_DIR=../log/$(SUBDIR)/
 TOPOLOGY=SquareAxA
 LOG_LEVEL=info
 
+.PHONY: light-start clean start sr-testdns
+.DEFAULT_GOAL: light-start
+
 start:
 	sudo bash -c 'source /etc/profile && python $(SCRIPTS)/$(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR)'
 
 light-start:
 	sudo bash -c 'source /etc/profile && python $(SCRIPTS)/$(CONFIG_HELPER) --topo $(TOPOLOGY) --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR) --net-args static_routing=True'
 
-sr-testdns:
-	# TODO Add patch to sr-routed
-
-.PHONY: light-start clean start
-.DEFAULT_GOAL: light-start
+test:
+	sudo python $(SCRIPTS)/test_srn.py --log $(LOG_LEVEL) --src-dir $(SRC_DIR) --log-dir $(LOG_DIR)
