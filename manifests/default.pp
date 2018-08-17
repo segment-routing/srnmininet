@@ -76,6 +76,7 @@ package { 'dia': }
 package { 'texinfo': }
 package { 'libc-ares-dev': }
 package { 'cmake': }
+package { 'libmnl': }
 
 # Miscellaneous
 package { 'xterm': }
@@ -123,9 +124,9 @@ exec { 'srnmininet':
 
 package { 'bind9': }
 
-$compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'], Package[
-  'libc-ares-dev'],
-  Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'], Package['texinfo']]
+$compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'],
+  Package['libc-ares-dev'], Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'],
+  Package['texinfo'], Package['libmnl']]
 
 exec { 'ovsdb-download':
   require => [ Exec['apt-update'] ],
@@ -167,7 +168,7 @@ exec { 'srn-download':
 }
 
 exec { 'srn':
-  require => [ Exec['jansson'], Exec['srn-download'] ],
+  require => [ Exec['jansson'], Exec['srn-download'] ] + $compilation,
   creates => "${srn_path}/bin/",
   cwd     => $srn_path,
   path    => "${default_path}:${srn_path}",
