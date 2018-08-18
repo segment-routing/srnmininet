@@ -49,6 +49,10 @@ package { 'six':
   require  => Package['python-pip'],
   provider => 'pip',
 }
+package { 'psutil':
+  require  => Package['python-pip'],
+  provider => 'pip',
+}
 
 # Networking
 package { 'wireshark': }
