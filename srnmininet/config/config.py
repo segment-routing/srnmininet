@@ -83,12 +83,14 @@ class OVSDB(Daemon):
     def has_started(self):
         # We override this such that we wait until we have the command socket
         if os.path.exists(self._file('ctl')):
-            cmd = ["ovsdb-client", "list-dbs", "tcp:[::1]:6640"]
+            cmds = [["ovsdb-client", "get-schema", remote, self.options.database]
+                    for remote in self._remote_server_to_client()]
             i = 0
             while True:
                 i += 1
                 try:
-                    self._node.cmd(cmd)
+                    for cmd in cmds:
+                        self._node.cmd(cmd)
                     time.sleep(1)
                     break
                 except Exception:
