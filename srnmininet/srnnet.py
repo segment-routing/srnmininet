@@ -113,8 +113,8 @@ class SRNNet(SR6Net):
             for link in self.links:
                 if L3Router.is_l3router_intf(link.intf1) and L3Router.is_l3router_intf(link.intf2):
                     # TODO Links should be oriented in the future !
-                    print(sr_controller_ovsdb.insert_entry(*self.ovsdb_link_entry(link, name_ospfid_mapping[link.intf1.node.name],
-                                                                                  name_ospfid_mapping[link.intf2.node.name])))
+                    print(sr_controller_ovsdb.insert_entry(*self.ovsdb_link_entry(link, name_ospfid_mapping.get(link.intf1.node.name, None),
+                                                                                  name_ospfid_mapping.get(link.intf2.node.name, None))))
 
         log.info('*** Individual daemon commands with netns commands\n')
         for r in self.routers:
