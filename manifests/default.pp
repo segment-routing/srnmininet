@@ -12,6 +12,13 @@ $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
 $jansson_download_path = "${jansson_source_path}.tar.gz"
 $jansson_path = "/usr/local/lib/libjansson.a"
 
+$zlog_version = "1.2.12"
+$zlog_release_url = "https://github.com/HardySimpson/zlog/archive/${zlog_version}.tar.gz"
+$zlog_root_dir = "/home/vagrant"
+$zlog_source_path = "${zlog_root_dir}/zlog-${zlog_version}"
+$zlog_download_path = "${zlog_source_path}.tar.gz"
+$zlog_path = "/usr/local/lib/libzlog.so"
+
 $ipmininet_repo = "https://github.com/oliviertilmans/ipmininet.git"
 $ipmininet_path = "/home/vagrant/ipmininet"
 $sr6mininet_repo = "https://bitbucket.org/jadinm/sr6mininet.git"
@@ -165,6 +172,24 @@ exec { 'jansson':
               make install;"
 }
 
+# Logging
+exec { 'zlog-download':
+  require => Exec['apt-update'],
+  creates => $zlog_source_path,
+  command => "wget -O - ${zlog_release_url} > ${zlog_download_path} &&\
+              tar -xvzf ${zlog_download_path} -C ${zlog_root_dir};"
+}
+exec { 'zlog':
+  require => [ Exec['apt-update'], Exec['zlog-download'] ],
+  cwd => $zlog_source_path,
+  creates => $zlog_path,
+  path => "${default_path}:${zlog_source_path}",
+  command => "make &&\
+              make install &&\
+	      /sbin/ldconfig -v &&\
+              rm ${zlog_download_path};"
+}
+
 exec { 'srn-download':
   require => Package['git'],
   creates => $srn_path,
@@ -172,7 +197,7 @@ exec { 'srn-download':
 }
 
 exec { 'srn':
-  require => [ Exec['jansson'], Exec['srn-download'] ] + $compilation,
+  require => [ Exec['jansson'], Exec['zlog'], Exec['srn-download'] ] + $compilation,
   creates => "${srn_path}/bin/",
   cwd     => $srn_path,
   path    => "${default_path}:${srn_path}",

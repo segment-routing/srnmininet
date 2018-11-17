@@ -94,8 +94,7 @@ class SRNRouter(SR6Router):
             self._old_sysctl[opt] = self._set_sysctl(opt, val)
         # Fire up all daemons
         for d in self.config.daemons:
-            kwargs = {"stdout": d.options.logobj, "stderr": d.options.logobj} if d.options.logobj else {}
-            self._processes.popen(*d.startup_line.split(' '), **kwargs)
+            self._processes.popen(*d.startup_line.split(' '))
             # Busy-wait if the daemon needs some time before being started
             while not d.has_started():
                 time.sleep(.001)

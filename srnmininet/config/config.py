@@ -154,21 +154,12 @@ class SRNOSPF6(OSPF6):
             cfg.ovsdb_client = ovsdb.options.ovsdb_client
             cfg.ovsdb_proto, cfg.ovsdb_ip6, cfg.ovsdb_port = ovsdb.extract_client_remote(cfg.ovsdb_server)
 
-        if not self.options.logobj:
-            self.options.logobj = open(self.options.logfile + ".stdout", "a+")
-
         return cfg
 
     def set_defaults(self, defaults):
         """:param ovsdb_adv: whether this daemon updates the database whenever the network state changes."""
         defaults.ovsdb_adv = False
         super(SRNOSPF6, self).set_defaults(defaults)
-
-    def cleanup(self):
-        if self.options.logobj:
-            self.options.logobj.close()
-
-        super(SRNOSPF6, self).cleanup()
 
     @property
     def template_filename(self):
@@ -289,7 +280,50 @@ class Named(Daemon):
             f.write(cfg[1])
 
 
-class SRNDaemon(Daemon):
+class ZlogDaemon(Daemon):
+    """
+    Class for daemons using zlog
+    """
+
+    def build(self):
+        cfg = super(ZlogDaemon, self).build()
+        cfg.zlog_cfg_filename = self.zlog_cfg_filename
+        return cfg
+
+    @property
+    def zlog_cfg_filename(self):
+        """Return the filename in which this daemon log rules should be stored"""
+        return self._filepath("%s-zlog.cfg" % self.NAME)
+
+    @property
+    def zlog_template_filename(self):
+        return "zlog.mako"
+
+    def render(self, cfg, **kwargs):
+
+        cfg_content = [super(ZlogDaemon, self).render(cfg, **kwargs)]
+
+        self.files.append(self.zlog_cfg_filename)
+        lg.debug('Generating %s\n' % self.zlog_cfg_filename)
+        try:
+            cfg["zlog"] = cfg[self.NAME]
+            cfg_content.append(template_lookup.get_template(self.zlog_template_filename).render(node=cfg, **kwargs))
+        except:
+            # Display template errors in a less cryptic way
+            lg.error('Couldn''t render a reroutemininet file(',
+                     self.zlog_template_filename, ')')
+            lg.error(mako_exceptions.text_error_template().render())
+            raise ValueError('Cannot render the rules configuration [%s: %s]' % (
+                self._node.name, self.NAME))
+        return cfg_content
+
+    def write(self, cfg):
+        super(ZlogDaemon, self).write(cfg[0])
+        with open(self.zlog_cfg_filename, 'w') as f:
+            f.write(cfg[1])
+
+
+class SRNDaemon(ZlogDaemon):
 
     @property
     def startup_line(self):
@@ -307,9 +341,6 @@ class SRNDaemon(Daemon):
         cfg.ovsdb_client = ovsdb.options.ovsdb_client
         cfg.ntransacts = self.options.ntransacts
 
-        if not self.options.logobj:
-            self.options.logobj = open(self.options.logfile, "a+")
-
         return cfg
 
     @property
@@ -322,12 +353,6 @@ class SRNDaemon(Daemon):
         """:param ntransacts: the number of threads sending transaction RPCs to OVSDB"""
         defaults.ntransacts = 1
         super(SRNDaemon, self).set_defaults(defaults)
-
-    def cleanup(self):
-        if self.options.logobj:
-            self.options.logobj.close()
-
-        super(SRNDaemon, self).cleanup()
 
 
 class SRDNSProxy(SRNDaemon):

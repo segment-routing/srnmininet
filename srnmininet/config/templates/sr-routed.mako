@@ -5,3 +5,4 @@ router_name "${node["sr-routed"].router_name}"
 localsid ${node["sr-routed"].localsid}
 ingress_iface "${node["sr-routed"].ingress_iface}"
 ntransacts ${node["sr-routed"].ntransacts}
+zlog_conf_file "${node["sr-routed"].zlog_cfg_filename}"

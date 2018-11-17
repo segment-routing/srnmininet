@@ -9,3 +9,4 @@ dns_server_port "${node["sr-dnsproxy"].dns_server_port}"
 dns_server "${node["sr-dnsproxy"].dns_server}"
 ntransacts ${node["sr-dnsproxy"].ntransacts}
 client_server_fifo "${node["sr-dnsproxy"].client_server_fifo}"
+zlog_conf_file "${node["sr-dnsproxy"].zlog_cfg_filename}"
