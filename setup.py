@@ -31,7 +31,10 @@ setup(
     install_requires=[
         'setuptools',
         'ipmininet',
-        'sr6mininet'
+        'sr6mininet',
+        'numpy',
+        'psutil',
+        'mako'
     ],
     tests_require=[],
     setup_requires=[],
