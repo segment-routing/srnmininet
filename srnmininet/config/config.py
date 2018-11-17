@@ -569,4 +569,4 @@ def find_controller(base, sr_controller):
             elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
                 for x in realIntfList(peer_intf.node):
                     heapq.heappush(to_visit, (cost + cost_intf(x), x))
-    return None
+    return None, None
