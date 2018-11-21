@@ -284,11 +284,23 @@ class ZlogDaemon(Daemon):
     """
     Class for daemons using zlog
     """
+    DEBUG = "debug"
+    INFO = "info"
+    NOTICE = "notice"
+    WARN = "warn"
+    ERROR = "error"
+    FATAL = "fatal"
 
     def build(self):
         cfg = super(ZlogDaemon, self).build()
         cfg.zlog_cfg_filename = self.zlog_cfg_filename
+        cfg.loglevel = self.options.loglevel
         return cfg
+
+    def set_defaults(self, defaults):
+        """:param loglevel: the minimum loglevel that is written in logfile"""
+        defaults.loglevel = self.WARN
+        super(ZlogDaemon, self).set_defaults(defaults)
 
     @property
     def zlog_cfg_filename(self):
