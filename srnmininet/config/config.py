@@ -29,6 +29,7 @@ class SRCtrlDomain(Overlay):
             self.set_node_property(n, "access_router", True)
             self.set_node_property(n, "sr_controller", sr_controller)
         self.set_node_property(sr_controller, "schema_tables", schema_tables)
+        self.set_node_property(sr_controller, "controller", True)
 
 
 class OVSDB(Daemon):
