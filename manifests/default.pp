@@ -5,7 +5,7 @@ $ovsdb_source_path = "${ovsdb_root_dir}/openvswitch-${ovsdb_version}"
 $ovsdb_download_path = "${ovsdb_source_path}.tar.gz"
 $ovsdb_path = "/usr/sbin/ovsdb-server"
 
-$jansson_version = "2.10"
+$jansson_version = "2.12"
 $jansson_release_url = "http://www.digip.org/jansson/releases/jansson-${jansson_version}.tar.gz"
 $jansson_root_dir = "/home/vagrant"
 $jansson_source_path = "${jansson_root_dir}/jansson-${jansson_version}"
@@ -87,7 +87,8 @@ package { 'dia': }
 package { 'texinfo': }
 package { 'libc-ares-dev': }
 package { 'cmake': }
-package { 'libmnl': }
+package { 'libmnl0': }
+package { 'libmnl-dev': }
 
 # Miscellaneous
 package { 'xterm': }
@@ -137,7 +138,7 @@ package { 'bind9': }
 
 $compilation = [Exec['locales'], Package['libreadline6-dev'], Package['gawk'], Package['libtool'],
   Package['libc-ares-dev'], Package['bison'], Package['flex'], Package['pkg-config'], Package['dia'],
-  Package['texinfo'], Package['libmnl']]
+  Package['texinfo'], Package['libmnl0'], Package['libmnl-dev']]
 
 exec { 'ovsdb-download':
   require => [ Exec['apt-update'] ],
@@ -169,7 +170,9 @@ exec { 'jansson':
   path    => "${default_path}:${jansson_source_path}",
   command => "configure &&\
               make &&\
-              make install;"
+              make install &&\
+	            /sbin/ldconfig -v &&\
+	            rm ${jansson_download_path};"
 }
 
 # Logging
@@ -186,7 +189,7 @@ exec { 'zlog':
   path => "${default_path}:${zlog_source_path}",
   command => "make &&\
               make install &&\
-	      /sbin/ldconfig -v &&\
+	            /sbin/ldconfig -v &&\
               rm ${zlog_download_path};"
 }
 
