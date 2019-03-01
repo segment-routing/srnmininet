@@ -14,7 +14,7 @@ class SRNTopo(IPTopo):
 
         super(SRNTopo, self).__init__(*args, **kwargs)
 
-    def addRouter(self, name, controller=False, **params):
+    def addRouter(self, name, **params):
         if self.cwd is not None and "cwd" not in params:
             params["cwd"] = os.path.join(self.cwd, name)
-        return super(SRNTopo, self).addRouter(name, controller=controller, **params)
+        return super(SRNTopo, self).addRouter(name, **params)

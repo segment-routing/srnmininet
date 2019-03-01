@@ -1,5 +1,3 @@
-import string
-
 from .config import SRCtrlDomain
 from .srntopo import SRNTopo
 
@@ -38,7 +36,7 @@ class Albilene(SRNTopo):
     def build(self, *args, **kwargs):
 
         # Controllers
-        controller = self.addRouter(self.controllers[0], controller=True)
+        controller = self.addRouter(self.controllers[0])
 
         # Routers
         a = self.addRouter("A")
@@ -69,8 +67,8 @@ class Albilene(SRNTopo):
 
         super(Albilene, self).build(*args, **kwargs)
 
-    def addRouter(self, name, controller=False, **params):
-        return super(Albilene, self).addRouter(name, controller, **params)
+    def addRouter(self, name, **params):
+        return super(Albilene, self).addRouter(name, **params)
 
     def addLink(self, node1, node2, link_delay=None, **opts):
         link_delay = self.link_delay if link_delay is None else link_delay
