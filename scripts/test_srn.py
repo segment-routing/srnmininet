@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import json
 import os
 import time
@@ -25,7 +26,7 @@ def parse_args():
     parser.add_argument('--log', choices=LEVELS.keys(), default='info',
                         help='The level of details in the logs.')
     parser.add_argument('--log-dir', help='Logging directory root',
-                        default='logs')
+                        default='/tmp/logs-%s' % datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
     parser.add_argument('--src-dir', help='Source directory root of SR components',
                         default='srn')
     return parser.parse_args()
