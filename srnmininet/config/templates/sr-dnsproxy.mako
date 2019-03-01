@@ -10,3 +10,11 @@ dns_server "${node["sr-dnsproxy"].dns_server}"
 ntransacts ${node["sr-dnsproxy"].ntransacts}
 client_server_fifo "${node["sr-dnsproxy"].client_server_fifo}"
 zlog_conf_file "${node["sr-dnsproxy"].zlog_cfg_filename}"
+
+% for key in node["sr-dnsproxy"].extras:
+    % if type(node["sr-dnsproxy"].extras[key]) == int:
+${key} ${node["sr-dnsproxy"].extras[key]}
+    % else:
+${key} "${node["sr-dnsproxy"].extras[key]}"
+    % endif
+% endfor

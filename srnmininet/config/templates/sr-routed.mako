@@ -6,3 +6,11 @@ localsid ${node["sr-routed"].localsid}
 ingress_iface "${node["sr-routed"].ingress_iface}"
 ntransacts ${node["sr-routed"].ntransacts}
 zlog_conf_file "${node["sr-routed"].zlog_cfg_filename}"
+
+% for key in node["sr-routed"].extras:
+    % if type(node["sr-routed"].extras[key]) == int:
+${key} ${node["sr-routed"].extras[key]}
+    % else:
+${key} "${node["sr-routed"].extras[key]}"
+    % endif
+% endfor

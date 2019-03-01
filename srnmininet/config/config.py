@@ -353,6 +353,7 @@ class SRNDaemon(ZlogDaemon):
         cfg.ovsdb_database = ovsdb.options.database
         cfg.ovsdb_client = ovsdb.options.ovsdb_client
         cfg.ntransacts = self.options.ntransacts
+        cfg.extras = self.options.extras
 
         return cfg
 
@@ -363,8 +364,11 @@ class SRNDaemon(ZlogDaemon):
                     cfg=self.cfg_filename)
 
     def set_defaults(self, defaults):
-        """:param ntransacts: the number of threads sending transaction RPCs to OVSDB"""
+        """:param ntransacts: the number of threads sending transaction RPCs to OVSDB
+           :param extras: a dict of {"key": value} with parameters to be inserted as is in the template
+           (value type must be either int or string)"""
         defaults.ntransacts = 1
+        defaults.extras = {}
         super(SRNDaemon, self).set_defaults(defaults)
 
 
