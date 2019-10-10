@@ -1,6 +1,7 @@
 from mininet.log import lg as log
 
 import ipaddress
+from mininet.node import Switch
 from ipmininet.utils import L3Router, otherIntf, realIntfList
 from sr6mininet.sr6host import SR6Host
 from sr6mininet.sr6link import SR6TCIntf
@@ -52,24 +53,50 @@ class SRNNet(SR6Net):
         else:
             return "NameIdMapping", entry
 
-    def ovsdb_link_entry(self, link, ospfv3_id1, ospfv3_id2):
+    @staticmethod
+    def find_path_properties(start, end):
+        """Find the path properties (delay and bandwidth) of the path between the interfaces of the routers
+           assuming that they are in the same broadcast domain.
+           Note: This does not handle loops inside the broadcast domain.
+           For that, we would need to pre-compute STP"""
+
+        visited = set()
+        to_visit = [(start, 0, None)]
+        # Explore all interfaces in broadcast domain recursively, until we find the 'end' interface
+        while to_visit:
+            i, i_delay, i_bw = to_visit.pop(0)
+            if i in visited:
+                continue
+            visited.add(i)
+            n = otherIntf(i)
+            n_delay = i_delay + int(i.delay.split("ms")[0])
+            n_bw = min(i_bw, i.bw) if i_bw is not None else i.bw
+            if isinstance(n.node, Switch):  # Expand
+                for s_i in realIntfList(n.node):
+                    to_visit.append((s_i, i_delay + n_delay, n_bw))
+            elif n.name == end.name:
+                return n_delay, n_bw
+        return None, None
+
+    def ovsdb_link_entry(self, intf1, intf2, ospfv3_id1, ospfv3_id2):
         """
         This function formats the OVSDB entry to install so that the controller is aware of a link.
 
-        :param link: The link to insert an entry for
+        :param intf1: The interface on the first router in the broadcast domain
+        :param intf2: The other interface of the router in the broadcast domain
         :param ospfv3_id1: The OSPFv3 router id of link.intf1.node
         :param ospfv3_id2: The OSPFv3 router id of link.intf2.node
         :return: The tuple (ovsdb table name, entry to insert)
         """
-        ms_delay = int(link.intf1.delay.split("ms")[0])
-        entry = {"name1": link.intf1.node.name, "name2": link.intf2.node.name,
-                 "addr1": str(link.intf1.ip6s(exclude_lls=True).next().ip),
+        ms_delay, bw = self.find_path_properties(start=intf1, end=intf2)
+        entry = {"name1": intf1.node.name, "name2": intf2.node.name,
+                 "addr1": str(intf1.ip6s(exclude_lls=True).next().ip),
                  # Can raise an exception if none exists
-                 "addr2": str(link.intf2.ip6s(exclude_lls=True).next().ip),
+                 "addr2": str(intf2.ip6s(exclude_lls=True).next().ip),
                  # Can raise an exception if none exists
-                 "metric": link.intf1.igp_metric,
-                 "bw": link.intf1.bw,
-                 "ava_bw": link.intf1.bw,
+                 "metric": intf1.igp_metric,
+                 "bw": bw,
+                 "ava_bw": intf1.bw,
                  "delay": ms_delay}
         if self.static_routing:
             return "LinkState", entry
@@ -110,11 +137,18 @@ class SRNNet(SR6Net):
                                                                               name_prefix_mapping[r.name])))
 
             log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
-            for link in self.links:
-                if L3Router.is_l3router_intf(link.intf1) and L3Router.is_l3router_intf(link.intf2):
-                    # TODO Links should be oriented in the future !
-                    print(sr_controller_ovsdb.insert_entry(*self.ovsdb_link_entry(link, name_ospfid_mapping.get(link.intf1.node.name, None),
-                                                                                  name_ospfid_mapping.get(link.intf2.node.name, None))))
+            for domain in self.broadcast_domains:
+                if len(domain.routers) <= 1:
+                    continue
+                for intf_r1 in list(domain.routers):
+                    for intf_r2 in list(domain.routers):
+                        if intf_r1.name <= intf_r2.name:
+                            continue
+                        # TODO Links should be oriented in the future !
+                        print(sr_controller_ovsdb.insert_entry(
+                            *self.ovsdb_link_entry(intf_r1, intf_r2,
+                                                   name_ospfid_mapping.get(intf_r1.node.name, None),
+                                                   name_ospfid_mapping.get(intf_r2.node.name, None))))
 
         log.info('*** Individual daemon commands with netns commands\n')
         for r in self.routers:
