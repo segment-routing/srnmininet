@@ -61,7 +61,7 @@ class SRNNet(SR6Net):
            For that, we would need to pre-compute STP"""
 
         visited = set()
-        to_visit = [(start, 0, None)]
+        to_visit = [(start, 0, 0)]
         # Explore all interfaces in broadcast domain recursively, until we find the 'end' interface
         while to_visit:
             i, i_delay, i_bw = to_visit.pop(0)
@@ -70,7 +70,12 @@ class SRNNet(SR6Net):
             visited.add(i)
             n = otherIntf(i)
             n_delay = i_delay + int(i.delay.split("ms")[0])
-            n_bw = min(i_bw, i.bw) if i_bw is not None else i.bw
+            if i_bw == 0:  # 0 means no bandwidth limit
+                n_bw = i.bw
+            elif i.bw != 0:
+                n_bw = min(i_bw, i.bw)
+            else:
+                n_bw = i_bw
             if isinstance(n.node, Switch):  # Expand
                 for s_i in realIntfList(n.node):
                     to_visit.append((s_i, i_delay + n_delay, n_bw))
@@ -96,7 +101,7 @@ class SRNNet(SR6Net):
                  # Can raise an exception if none exists
                  "metric": intf1.igp_metric,
                  "bw": bw,
-                 "ava_bw": intf1.bw,
+                 "ava_bw": bw,
                  "delay": ms_delay}
         if self.static_routing:
             return "LinkState", entry
