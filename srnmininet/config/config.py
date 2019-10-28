@@ -76,7 +76,7 @@ class OVSDB(Daemon):
         defaults.database = "SR_test"
         defaults.remotes = ["ptcp:6640:[%s]" % ip6.ip.compressed
                             for itf in self._node.intfList()
-                            for ip6 in itf.ip6s(exclude_lls=True)]
+                            for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=False)]
         defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
         defaults.version = "0.0.1"
         super(OVSDB, self).set_defaults(defaults)
@@ -205,7 +205,7 @@ class Named(Daemon):
         cfg.abs_logfile = os.path.abspath(cfg.logfile)
         cfg.zone = self.options.zone
         cfg.zone_cfg_filename = os.path.abspath(self.zone_cfg_filename)
-        cfg.ns = [ip6.ip.compressed for itf in self._node.intfList() for ip6 in itf.ip6s(exclude_lls=True)]
+        cfg.ns = [ip6.ip.compressed for itf in self._node.intfList() for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=False)]
         cfg.hosts = [ConfigDict(name=host.name, ip6s=[ip6.ip.compressed for itf in realIntfList(host)
                                                       for ip6 in itf.ip6s(exclude_lls=True)])
                      for host in self._find_hosts()]
@@ -517,10 +517,9 @@ class SRRouted(SRNDaemon):
 
             # Add a rule so that traffic directed to loopback prefix is transferred to the localsid table
 
-            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True):
-                if ip6.ip.compressed != "::1":
-                    cmd = ["ip", "-6", "rule", "add", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
-                    self._node.cmd(cmd)
+            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True, exclude_lbs=True):
+                cmd = ["ip", "-6", "rule", "add", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
+                self._node.cmd(cmd)
 
         return self.localsid_idx
 
@@ -535,13 +534,12 @@ class SRRouted(SRNDaemon):
                 lg.debug("Cannot flush routing table %s", self.localsid_name)
 
             # Remove the rules pointing to the table
-            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True):
-                if ip6.ip.compressed != "::1":
-                    cmd = ["ip", "-6", "rule", "del", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
-                    try:
-                        self._node.cmd(cmd)
-                    except Exception:
-                        pass
+            for ip6 in self._node.intf("lo").ip6s(exclude_lls=True, exclude_lbs=True):
+                cmd = ["ip", "-6", "rule", "del", "to", ip6.network.with_prefixlen, "lookup", self.localsid_name]
+                try:
+                    self._node.cmd(cmd)
+                except Exception:
+                    pass
 
             # Clean the entry in the config file
             with open("/etc/iproute2/rt_tables") as fileobj:
@@ -563,7 +561,7 @@ def cost_intf(intf):
 
 def find_controller(base, sr_controller):
     if base.name == sr_controller:
-        return (base.intf("lo").ip6 or "::1"), ovsdb_daemon(base)
+        return (base.intf("lo").ip6 or u"::1"), ovsdb_daemon(base)
 
     visited = set()
     to_visit = [(cost_intf(intf), intf) for intf in realIntfList(base)]
@@ -578,10 +576,9 @@ def find_controller(base, sr_controller):
         visited.add(intf)
         for peer_intf in intf.broadcast_domain.routers:
             if peer_intf.node.name == sr_controller:
-                ip6s = peer_intf.node.intf("lo").ip6s(exclude_lls=True)
+                ip6s = peer_intf.node.intf("lo").ip6s(exclude_lls=True, exclude_lbs=True)
                 for ip6 in ip6s:
-                    if ip6.ip.compressed != "::1":
-                        return ip6.ip, ovsdb_daemon(peer_intf.node)
+                    return ip6.ip, ovsdb_daemon(peer_intf.node)
                 return peer_intf.ip6, ovsdb_daemon(peer_intf.node)
             elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
                 for x in realIntfList(peer_intf.node):

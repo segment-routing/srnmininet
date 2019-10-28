@@ -121,10 +121,9 @@ class SRNNet(SR6Net):
         name_prefix_mapping = {}
         sr_controller_ovsdb = None
         for router in self.routers:
-            for ip6 in self[router.name].intf("lo").ip6s(exclude_lls=True):
-                if ip6 != ipaddress.ip_interface("::1"):
-                    name_prefix_mapping[router.name] = ip6
-                    break
+            for ip6 in self[router.name].intf("lo").ip6s(exclude_lls=True, exclude_lbs=True):
+                name_prefix_mapping[router.name] = ip6
+                break
             for daemon in router.config.daemons:
                 if daemon.NAME == SRNOSPF6.NAME:
                     if daemon.options.routerid:

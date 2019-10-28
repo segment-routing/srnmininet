@@ -46,10 +46,9 @@ def test_dns_latency(link_delay):
         for node in net.routers:
             if daemon_in_node(node, SRDNSProxy) is not None:
                 for itf in node.intfList():
-                    for ip6 in itf.ip6s(exclude_lls=True):
-                        if ip6.ip.compressed != "::1":
-                            dns_proxy_ip6 = ip6.ip.compressed
-                            lg.debug("SRDNSProxy address found was %s", dns_proxy_ip6)
+                    for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=True):
+                        dns_proxy_ip6 = ip6.ip.compressed
+                        lg.debug("SRDNSProxy address found was %s", dns_proxy_ip6)
         if dns_proxy_ip6 is None:
             raise Exception("Cannot find a global address for a node with SRDNSProxy")
 
@@ -122,10 +121,9 @@ def test_flapping_link():
         for node in net.routers:
             if daemon_in_node(node, SRDNSProxy) is not None:
                 for itf in node.intfList():
-                    for ip6 in itf.ip6s(exclude_lls=True):
-                        if ip6.ip.compressed != "::1":
-                            dns_proxy_ip6 = ip6.ip.compressed
-                            lg.debug("SRDNSProxy address found was %s", dns_proxy_ip6)
+                    for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=True):
+                        dns_proxy_ip6 = ip6.ip.compressed
+                        lg.debug("SRDNSProxy address found was %s", dns_proxy_ip6)
         if dns_proxy_ip6 is None:
             raise Exception("Cannot find a global address for a node with SRDNSProxy")
 
