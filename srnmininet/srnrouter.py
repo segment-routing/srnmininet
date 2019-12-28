@@ -42,7 +42,7 @@ class SRNConfig(SR6Config):
 
 def mkdir_p(path):
     try:
-        os.makedirs(path, mode=0777)
+        os.makedirs(path, mode=0o777)
     except OSError as exc:
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass
@@ -71,39 +71,3 @@ class SRNRouter(SR6Router):
     @property
     def schema_tables(self):
         return self.get('schema_tables', None)
-
-    def start(self):
-        """Start the router: Configure the daemons, set the relevant sysctls,
-        and fire up all needed processes"""
-        # Build the config
-        self.config.build()
-        # Check them
-        err_code = False
-        for d in self.config.daemons:
-            out, err, code = self._processes.pexec(*d.dry_run.split(' '))
-            err_code = err_code or code
-            if code:
-                lg.error(d.NAME, 'configuration check failed [rcode:', str(code),
-                         ']\nstdout:', str(out), '\nstderr:', str(err))
-        if err_code:
-            lg.error('Config checks failed, aborting!')
-            mininet.clean.cleanup()
-            sys.exit(1)
-        # Set relevant sysctls
-        for opt, val in self.config.sysctl:
-            self._old_sysctl[opt] = self._set_sysctl(opt, val)
-        # Fire up all daemons
-        for d in self.config.daemons:
-            self._processes.popen(*d.startup_line.split(' '))
-            # Busy-wait if the daemon needs some time before being started
-            while not d.has_started():
-                time.sleep(.001)
-
-        # Install SRv6 Routes
-        if self.srv6_routes is not None:
-            for route in self.srv6_routes:
-                code = route.install()
-                if code:
-                    lg.error('SRv6 install failed, aborting!')
-                    mininet.clean.cleanup()
-                    sys.exit(1)

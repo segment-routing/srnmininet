@@ -95,9 +95,9 @@ class SRNNet(SR6Net):
         """
         ms_delay, bw = self.find_path_properties(start=intf1, end=intf2)
         entry = {"name1": intf1.node.name, "name2": intf2.node.name,
-                 "addr1": str(intf1.ip6s(exclude_lls=True).next().ip),
+                 "addr1": str(next(intf1.ip6s(exclude_lls=True)).ip),
                  # Can raise an exception if none exists
-                 "addr2": str(intf2.ip6s(exclude_lls=True).next().ip),
+                 "addr2": str(next(intf2.ip6s(exclude_lls=True)).ip),
                  # Can raise an exception if none exists
                  "metric": intf1.igp_metric,
                  "bw": bw,
@@ -124,12 +124,13 @@ class SRNNet(SR6Net):
             for ip6 in self[router.name].intf("lo").ip6s(exclude_lls=True, exclude_lbs=True):
                 name_prefix_mapping[router.name] = ip6
                 break
-            for daemon in router.config.daemons:
+            for daemon in router.nconfig.daemons:
                 if daemon.NAME == SRNOSPF6.NAME:
                     if daemon.options.routerid:
                         name_ospfid_mapping[router.name] = daemon.options.routerid
                     else:
-                        name_ospfid_mapping[router.name] = router.config.routerid
+                        name_ospfid_mapping[router.name] = \
+                            router.nconfig.routerid
                     name_ospfid_mapping[router.name] = int(ipaddress.ip_address(name_ospfid_mapping[router.name]))
                 elif daemon.NAME == OVSDB.NAME:
                     sr_controller_ovsdb = daemon
@@ -141,13 +142,18 @@ class SRNNet(SR6Net):
                                                                               name_prefix_mapping[r.name])))
 
             log.info('*** Inserting mapping between links, router ids and ipv6 addresses to OVSDB\n')
+            print(len(self.broadcast_domains))
             for domain in self.broadcast_domains:
+                print(domain.interfaces)
                 if len(domain.routers) <= 1:
                     continue
+                print(len(domain.routers))
                 for intf_r1 in list(domain.routers):
                     for intf_r2 in list(domain.routers):
                         if intf_r1.name <= intf_r2.name:
                             continue
+                        print(intf_r1.name)
+                        print(intf_r2.name)
                         # TODO Links should be oriented in the future !
                         print(sr_controller_ovsdb.insert_entry(
                             *self.ovsdb_link_entry(intf_r1, intf_r2,
@@ -156,5 +162,5 @@ class SRNNet(SR6Net):
 
         log.info('*** Individual daemon commands with netns commands\n')
         for r in self.routers:
-            for d in r.config.daemons:
+            for d in r.nconfig.daemons:
                 log.info('ip netns exec %s "%s"\n' % (r.name, d.startup_line))

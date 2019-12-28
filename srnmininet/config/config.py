@@ -3,17 +3,19 @@ import json
 import os
 import re
 import time
-from copy import deepcopy
-from mininet.log import lg
 
+import mako.exceptions
+from ipmininet.host.config import Named
+from ipmininet.host import IPHost
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
-from ipmininet.router.config.base import Daemon
-from ipmininet.router.config.utils import ConfigDict, template_lookup
-from ipmininet.utils import L3Router, realIntfList
-from mako import exceptions as mako_exceptions
+from ipmininet.router.config.base import Daemon, RouterDaemon
+from ipmininet.utils import realIntfList
+from mako.lookup import TemplateLookup
+from mininet.log import lg
 
-template_lookup.directories.append(os.path.join(os.path.dirname(__file__), 'templates'))
+__TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), 'templates')
+srn_template_lookup = TemplateLookup(directories=[__TEMPLATES_DIR])
 
 
 class SRCtrlDomain(Overlay):
@@ -32,11 +34,16 @@ class SRCtrlDomain(Overlay):
         self.set_node_property(sr_controller, "controller", True)
 
 
-class OVSDB(Daemon):
+class OVSDB(RouterDaemon):
     NAME = 'ovsdb-server'
+    KILL_PATTERNS = (NAME,)
     PRIO = 0
 
     OVSDB_INSERT_FORMAT = "[\"%s\",{\"row\":%s,\"table\":\"%s\",\"op\":\"insert\"}]"
+
+    def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
+        super(OVSDB, self).__init__(node, template_lookup=template_lookup,
+                                    **kwargs)
 
     @property
     def startup_line(self):
@@ -75,7 +82,7 @@ class OVSDB(Daemon):
         defaults.ovsdb_client = "ovsdb-client"
         defaults.database = "SR_test"
         defaults.remotes = ["ptcp:6640:[%s]" % ip6.ip.compressed
-                            for itf in self._node.intfList()
+                            for itf in realIntfList(self._node) + [self._node.intf('lo')]
                             for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=False)]
         defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
         defaults.version = "0.0.1"
@@ -132,8 +139,8 @@ class OVSDB(Daemon):
 
     def insert_entry(self, table_name, content):
         insert = self.OVSDB_INSERT_FORMAT % (self.options.database, json.dumps(content), table_name)
-        cmd = "%s transact %s '%s'" % (self.options.ovsdb_client, self._remote_server_to_client().next(), insert)
-        lg.debug(cmd)
+        cmd = "%s transact %s '%s'" % (self.options.ovsdb_client, next(self._remote_server_to_client()), insert)
+        print(cmd)  # TODO Remove
         return self._node.cmd(cmd)
 
 
@@ -143,6 +150,10 @@ class SRNOSPF6(OSPF6):
     It enables communication with OVSDB
     """
     DEPENDS = (Zebra,)
+
+    def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
+        super(SRNOSPF6, self).__init__(node, template_lookup=template_lookup,
+                                       **kwargs)
 
     def build(self):
         cfg = super(SRNOSPF6, self).build()
@@ -167,120 +178,7 @@ class SRNOSPF6(OSPF6):
         return 'srn%s.mako' % self.NAME
 
 
-class Named(Daemon):
-    NAME = 'named'
-    PRIO = 0
-    ARMOR_CFG_FILE = "/etc/apparmor.d/local/usr.sbin.named"
-
-    def __init__(self, node, **kwargs):
-        super(Named, self).__init__(node, **kwargs)
-        self.armor_old_config = None
-
-    def _allow_apparmor(self):
-        """Config Apparmor to allow named to access the cwd"""
-        self.armor_old_config = []
-        with open(self.ARMOR_CFG_FILE, "r") as fileobj:
-            self.armor_old_config = fileobj.readlines()
-        armor_new_config = deepcopy(self.armor_old_config)
-        armor_new_config.append("%s/** rw,\n" % os.path.abspath(self._node.cwd))
-        armor_new_config.append("%s rw,\n" % os.path.abspath(self._node.cwd))
-        with open(self.ARMOR_CFG_FILE, "w") as fileobj:
-            fileobj.writelines(armor_new_config)
-        self._node.cmd(["/etc/init.d/apparmor", "restart"])
-
-    @property
-    def startup_line(self):
-        return '{name} -c {cfg} -f -u root -p {port}' \
-            .format(name=self.NAME,
-                    cfg=self.cfg_filename,
-                    port=self.options.dns_server_port)
-
-    @property
-    def dry_run(self):
-        return '{name} {cfg}' \
-            .format(name='named-checkconf', cfg=self.cfg_filename)
-
-    def build(self):
-        cfg = super(Named, self).build()
-        cfg.abs_logfile = os.path.abspath(cfg.logfile)
-        cfg.zone = self.options.zone
-        cfg.zone_cfg_filename = os.path.abspath(self.zone_cfg_filename)
-        cfg.ns = [ip6.ip.compressed for itf in self._node.intfList() for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=False)]
-        cfg.hosts = [ConfigDict(name=host.name, ip6s=[ip6.ip.compressed for itf in realIntfList(host)
-                                                      for ip6 in itf.ip6s(exclude_lls=True)])
-                     for host in self._find_hosts()]
-        # Add exception in apparmor
-        self._allow_apparmor()
-        return cfg
-
-    def _find_hosts(self):
-        """Return the list of connected hosts in the ASN"""
-        base = self._node
-        visited = set()
-        to_visit = realIntfList(base)
-        hosts = []
-
-        while to_visit:
-            i = to_visit.pop()
-            if i in visited:
-                continue
-            visited.add(i)
-            for n in i.broadcast_domain:
-                if L3Router.is_l3router_intf(n):
-                    if n.node.asn == base.asn or not n.node.asn:
-                        to_visit.extend(realIntfList(n.node))
-                else:
-                    if n not in hosts:
-                        hosts.append(n.node)
-        return hosts
-
-    def set_defaults(self, defaults):
-        """:param dns_server_port: The port number of the dns server
-           :param zone: The local zone of name server"""
-        defaults.dns_server_port = 2000
-        defaults.zone = "test.sr."
-        super(Named, self).set_defaults(defaults)
-
-    def cleanup(self):
-        super(Named, self).cleanup()
-        if self.armor_old_config is not None:
-            with open(self.ARMOR_CFG_FILE, "w") as fileobj:
-                fileobj.writelines(self.armor_old_config)
-            self._node.cmd(["/etc/init.d/apparmor", "restart"])
-
-    @property
-    def zone_cfg_filename(self):
-        """Return the filename in which this daemon rules should be stored"""
-        return self._filepath("%szone" % self.options.zone)
-
-    @property
-    def zone_template_filename(self):
-        return "zone.mako"
-
-    def render(self, cfg, **kwargs):
-
-        cfg_content = [super(Named, self).render(cfg, **kwargs)]
-
-        self.files.append(self.zone_cfg_filename)
-        lg.debug('Generating %s\n' % self.zone_cfg_filename)
-        try:
-            cfg_content.append(template_lookup.get_template(self.zone_template_filename).render(node=cfg, **kwargs))
-            return cfg_content
-        except:
-            # Display template errors in a less cryptic way
-            lg.error('Couldn''t render a config file(',
-                     self.zone_template_filename, ')')
-            lg.error(mako_exceptions.text_error_template().render())
-            raise ValueError('Cannot render the DNS zone configuration [%s: %s]' % (
-                self._node.name, self.NAME))
-
-    def write(self, cfg):
-
-        super(Named, self).write(cfg[0])
-        with open(self.zone_cfg_filename, 'w') as f:
-            f.write(cfg[1])
-
-
+# Do not get a router id => can be run on hosts as well
 class ZlogDaemon(Daemon):
     """
     Class for daemons using zlog
@@ -291,6 +189,11 @@ class ZlogDaemon(Daemon):
     WARN = "warn"
     ERROR = "error"
     FATAL = "fatal"
+
+    def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
+        super(ZlogDaemon, self).__init__(node,
+                                         template_lookup=template_lookup,
+                                         **kwargs)
 
     def build(self):
         cfg = super(ZlogDaemon, self).build()
@@ -312,28 +215,20 @@ class ZlogDaemon(Daemon):
     def zlog_template_filename(self):
         return "zlog.mako"
 
+    @property
+    def cfg_filenames(self):
+        return super(ZlogDaemon, self).cfg_filenames + \
+               [self.zlog_cfg_filename]
+
+    @property
+    def template_filenames(self):
+        return super(ZlogDaemon, self).template_filenames + \
+               [self.zlog_template_filename]
+
     def render(self, cfg, **kwargs):
-
-        cfg_content = [super(ZlogDaemon, self).render(cfg, **kwargs)]
-
-        self.files.append(self.zlog_cfg_filename)
-        lg.debug('Generating %s\n' % self.zlog_cfg_filename)
-        try:
-            cfg["zlog"] = cfg[self.NAME]
-            cfg_content.append(template_lookup.get_template(self.zlog_template_filename).render(node=cfg, **kwargs))
-        except:
-            # Display template errors in a less cryptic way
-            lg.error('Couldn''t render a reroutemininet file(',
-                     self.zlog_template_filename, ')')
-            lg.error(mako_exceptions.text_error_template().render())
-            raise ValueError('Cannot render the rules configuration [%s: %s]' % (
-                self._node.name, self.NAME))
-        return cfg_content
-
-    def write(self, cfg):
-        super(ZlogDaemon, self).write(cfg[0])
-        with open(self.zlog_cfg_filename, 'w') as f:
-            f.write(cfg[1])
+        # So that it works for all daemons extending this class
+        cfg["zlog"] = cfg[self.NAME]
+        return super(ZlogDaemon, self).render(cfg, **kwargs)
 
 
 class SRNDaemon(ZlogDaemon):
@@ -372,9 +267,17 @@ class SRNDaemon(ZlogDaemon):
         super(SRNDaemon, self).set_defaults(defaults)
 
 
+class SRNNamed(Named):
+
+    def set_defaults(self, defaults):
+        super(SRNNamed, self).set_defaults(defaults)
+        defaults.dns_server_port = 2000
+
+
 class SRDNSProxy(SRNDaemon):
     NAME = 'sr-dnsproxy'
-    DEPENDS = (Named, OVSDB)
+    DEPENDS = (SRNNamed, OVSDB)
+    KILL_PATTERNS = (NAME,)
 
     def build(self):
         cfg = super(SRDNSProxy, self).build()
@@ -383,7 +286,8 @@ class SRDNSProxy(SRNDaemon):
         cfg.max_queries = self.options.max_queries
 
         cfg.dns_server = self.options.sr_controller_ip  # Acceptable since "Named" is a required daemon with OVSDB
-        cfg.dns_server_port = self._node.config.daemon(Named.NAME).options.dns_server_port
+        cfg.dns_server_port = self._node.nconfig.daemon(
+            SRNNamed.NAME).options.dns_server_port
 
         cfg.proxy_listen_addr = self.options.sr_controller_ip  # Acceptable since we require the daemon with OVSDB
         cfg.proxy_listen_port = self.options.proxy_listen_port
@@ -407,7 +311,8 @@ class SRDNSProxy(SRNDaemon):
 
 class SRCtrl(SRNDaemon):
     NAME = 'sr-ctrl'
-    DEPENDS = (OVSDB, SRDNSProxy, Named)
+    DEPENDS = (OVSDB, SRDNSProxy, SRNNamed)
+    KILL_PATTERNS = (NAME,)
 
     def build(self):
         cfg = super(SRCtrl, self).build()
@@ -437,28 +342,15 @@ class SRCtrl(SRNDaemon):
     def rules_template_filename(self):
         return "%s-rules.mako" % self.NAME
 
-    def render(self, cfg, **kwargs):
+    @property
+    def cfg_filenames(self):
+        return super(SRCtrl, self).cfg_filenames + \
+               [self.rules_cfg_filename]
 
-        cfg_content = [super(SRCtrl, self).render(cfg, **kwargs)]
-
-        self.files.append(self.rules_cfg_filename)
-        lg.debug('Generating %s\n' % self.rules_cfg_filename)
-        try:
-            cfg_content.append(template_lookup.get_template(self.rules_template_filename).render(node=cfg, **kwargs))
-            return cfg_content
-        except:
-            # Display template errors in a less cryptic way
-            lg.error('Couldn''t render a config file(',
-                     self.rules_template_filename, ')')
-            lg.error(mako_exceptions.text_error_template().render())
-            raise ValueError('Cannot render the rules configuration [%s: %s]' % (
-                self._node.name, self.NAME))
-
-    def write(self, cfg):
-
-        super(SRCtrl, self).write(cfg[0])
-        with open(self.rules_cfg_filename, 'w') as f:
-            f.write(cfg[1])
+    @property
+    def template_filenames(self):
+        return super(SRCtrl, self).template_filenames + \
+               [self.rules_template_filename]
 
 
 class SRRouted(SRNDaemon):
@@ -552,7 +444,7 @@ class SRRouted(SRNDaemon):
 
 
 def ovsdb_daemon(node):
-    return node.config.daemon(OVSDB.NAME)
+    return node.nconfig.daemon(OVSDB.NAME)
 
 
 def cost_intf(intf):
@@ -562,6 +454,12 @@ def cost_intf(intf):
 def find_controller(base, sr_controller):
     if base.name == sr_controller:
         return (base.intf("lo").ip6 or u"::1"), ovsdb_daemon(base)
+
+    if isinstance(base, IPHost):
+        # Get the ASN from the access router
+        asn = base.defaultIntf().broadcast_domain.routers[0].node.asn
+    else:
+        asn = base.asn
 
     visited = set()
     to_visit = [(cost_intf(intf), intf) for intf in realIntfList(base)]
@@ -580,7 +478,7 @@ def find_controller(base, sr_controller):
                 for ip6 in ip6s:
                     return ip6.ip, ovsdb_daemon(peer_intf.node)
                 return peer_intf.ip6, ovsdb_daemon(peer_intf.node)
-            elif peer_intf.node.asn == base.asn or not peer_intf.node.asn:
+            elif peer_intf.node.asn == asn or not peer_intf.node.asn:
                 for x in realIntfList(peer_intf.node):
                     heapq.heappush(to_visit, (cost + cost_intf(x), x))
     return None, None
