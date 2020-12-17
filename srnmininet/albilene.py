@@ -31,7 +31,7 @@ class Albilene(SRNTopo):
         self.link_bandwidth = link_bandwidth
         self.schema_tables = schema_tables if schema_tables else {}
 
-        super(Albilene, self).__init__("controller", *args, **kwargs)
+        super().__init__("controller", *args, **kwargs)
 
     def build(self, *args, **kwargs):
 
@@ -57,28 +57,20 @@ class Albilene(SRNTopo):
         self.addLink(a, c)
         self.addLink(c, d)
         self.addLink(d, e)
-        self.addLink(c, e, link_delay="5ms")
+        self.addLink(c, e, delay="5ms")
         self.addLink(e, f)
         self.addLink(f, server)
         self.addLink(b, f)
 
         # SRN overlay
-        self.addOverlay(SRCtrlDomain(access_routers=(a, f), sr_controller=controller, schema_tables=self.schema_tables))
+        self.addOverlay(SRCtrlDomain(access_routers=(a, f), sr_controller=controller, schema_tables=self.schema_tables,
+                                     hosts=self.hosts()))
 
-        super(Albilene, self).build(*args, **kwargs)
+        super().build(*args, **kwargs)
 
     def addRouter(self, name, **params):
-        return super(Albilene, self).addRouter(name, **params)
+        return super().addRouter(name, **params)
 
-    def addLink(self, node1, node2, link_delay=None, **opts):
-        link_delay = self.link_delay if link_delay is None else link_delay
-
-        default_params1 = {"bw": self.link_bandwidth, "delay": link_delay}
-        default_params1.update(opts.get("params1", {}))
-        opts["params1"] = default_params1
-
-        default_params2 = {"bw": self.link_bandwidth, "delay": link_delay}
-        default_params2.update(opts.get("params2", {}))
-        opts["params2"] = default_params2
-
-        return super(SRNTopo, self).addLink(node1, node2, **opts)
+    def addLink(self, node1, node2, delay=None, **opts):
+        delay = self.link_delay if delay is None else delay
+        return super().addLink(node1, node2, delay=delay, bw=self.link_bandwidth)

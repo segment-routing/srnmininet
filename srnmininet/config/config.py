@@ -4,9 +4,8 @@ import os
 import re
 import time
 
-import mako.exceptions
-from ipmininet.host.config import Named
 from ipmininet.host import IPHost
+from ipmininet.host.config import Named, DNSZone
 from ipmininet.iptopo import Overlay
 from ipmininet.router.config import OSPF6, Zebra
 from ipmininet.router.config.base import Daemon, RouterDaemon
@@ -14,16 +13,18 @@ from ipmininet.utils import realIntfList
 from mako.lookup import TemplateLookup
 from mininet.log import lg
 
+from srnmininet.srntopo import SRNTopo
+
 __TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), 'templates')
 srn_template_lookup = TemplateLookup(directories=[__TEMPLATES_DIR])
 
 
 class SRCtrlDomain(Overlay):
 
-    def __init__(self, access_routers, sr_controller, schema_tables):  # TODO Add marker for access router
+    def __init__(self, access_routers, sr_controller, schema_tables, hosts=()):  # TODO Add marker for access router
 
-        super(SRCtrlDomain, self).__init__(nodes=access_routers,
-                                           nprops={"sr_controller": sr_controller, "schema_tables": schema_tables})
+        super().__init__(nodes=access_routers, nprops={"sr_controller": sr_controller, "schema_tables": schema_tables})
+        self.zone = DNSZone(name="test.sr", dns_master=sr_controller, nodes=self.nodes + list(hosts))
         if sr_controller not in self.nodes:
             self.add_node(sr_controller)
 
@@ -32,6 +33,13 @@ class SRCtrlDomain(Overlay):
             self.set_node_property(n, "sr_controller", sr_controller)
         self.set_node_property(sr_controller, "schema_tables", schema_tables)
         self.set_node_property(sr_controller, "controller", True)
+
+    def check_consistency(self, topo: 'SRNTopo') -> bool:
+        return super().check_consistency(topo) and self.zone.check_consistency(topo)
+
+    def apply(self, topo: 'SRNTopo'):
+        self.zone.apply(topo)
+        super().apply(topo)
 
 
 class OVSDB(RouterDaemon):
@@ -42,8 +50,8 @@ class OVSDB(RouterDaemon):
     OVSDB_INSERT_FORMAT = "[\"%s\",{\"row\":%s,\"table\":\"%s\",\"op\":\"insert\"}]"
 
     def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
-        super(OVSDB, self).__init__(node, template_lookup=template_lookup,
-                                    **kwargs)
+        super().__init__(node, template_lookup=template_lookup,
+                         **kwargs)
 
     @property
     def startup_line(self):
@@ -56,7 +64,7 @@ class OVSDB(RouterDaemon):
                     ctl=os.path.abspath(self._file('ctl')))
 
     def build(self):
-        cfg = super(OVSDB, self).build()
+        cfg = super().build()
 
         cfg.version = self.options.version
         cfg.database = self.options.database
@@ -86,7 +94,7 @@ class OVSDB(RouterDaemon):
                             for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=False)]
         defaults.schema_tables = self._node.schema_tables if self._node.schema_tables else {}
         defaults.version = "0.0.1"
-        super(OVSDB, self).set_defaults(defaults)
+        super().set_defaults(defaults)
 
     def has_started(self):
         # We override this such that we wait until we have the command socket
@@ -152,11 +160,11 @@ class SRNOSPF6(OSPF6):
     DEPENDS = (Zebra,)
 
     def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
-        super(SRNOSPF6, self).__init__(node, template_lookup=template_lookup,
-                                       **kwargs)
+        super().__init__(node, template_lookup=template_lookup,
+                         **kwargs)
 
     def build(self):
-        cfg = super(SRNOSPF6, self).build()
+        cfg = super().build()
 
         cfg.ovsdb_adv = self.options.ovsdb_adv
         if cfg.ovsdb_adv:
@@ -171,7 +179,7 @@ class SRNOSPF6(OSPF6):
     def set_defaults(self, defaults):
         """:param ovsdb_adv: whether this daemon updates the database whenever the network state changes."""
         defaults.ovsdb_adv = False
-        super(SRNOSPF6, self).set_defaults(defaults)
+        super().set_defaults(defaults)
 
     @property
     def template_filename(self):
@@ -191,20 +199,20 @@ class ZlogDaemon(Daemon):
     FATAL = "fatal"
 
     def __init__(self, node, template_lookup=srn_template_lookup, **kwargs):
-        super(ZlogDaemon, self).__init__(node,
-                                         template_lookup=template_lookup,
-                                         **kwargs)
+        super().__init__(node,
+                         template_lookup=template_lookup,
+                         **kwargs)
 
     def build(self):
-        cfg = super(ZlogDaemon, self).build()
+        cfg = super().build()
         cfg.zlog_cfg_filename = self.zlog_cfg_filename
         cfg.loglevel = self.options.loglevel
         return cfg
 
     def set_defaults(self, defaults):
         """:param loglevel: the minimum loglevel that is written in logfile"""
-        defaults.loglevel = self.WARN
-        super(ZlogDaemon, self).set_defaults(defaults)
+        defaults.loglevel = self.DEBUG
+        super().set_defaults(defaults)
 
     @property
     def zlog_cfg_filename(self):
@@ -217,18 +225,18 @@ class ZlogDaemon(Daemon):
 
     @property
     def cfg_filenames(self):
-        return super(ZlogDaemon, self).cfg_filenames + \
+        return super().cfg_filenames + \
                [self.zlog_cfg_filename]
 
     @property
     def template_filenames(self):
-        return super(ZlogDaemon, self).template_filenames + \
+        return super().template_filenames + \
                [self.zlog_template_filename]
 
     def render(self, cfg, **kwargs):
         # So that it works for all daemons extending this class
         cfg["zlog"] = cfg[self.NAME]
-        return super(ZlogDaemon, self).render(cfg, **kwargs)
+        return super().render(cfg, **kwargs)
 
 
 class SRNDaemon(ZlogDaemon):
@@ -240,7 +248,7 @@ class SRNDaemon(ZlogDaemon):
                     cfg=self.cfg_filename)
 
     def build(self):
-        cfg = super(SRNDaemon, self).build()
+        cfg = super().build()
 
         sr_controller_ip, ovsdb = find_controller(self._node, self._node.sr_controller)
         self.options.sr_controller_ip = sr_controller_ip
@@ -264,13 +272,13 @@ class SRNDaemon(ZlogDaemon):
            (value type must be either int or string)"""
         defaults.ntransacts = 1
         defaults.extras = {}
-        super(SRNDaemon, self).set_defaults(defaults)
+        super().set_defaults(defaults)
 
 
 class SRNNamed(Named):
 
     def set_defaults(self, defaults):
-        super(SRNNamed, self).set_defaults(defaults)
+        super().set_defaults(defaults)
         defaults.dns_server_port = 2000
 
 
@@ -280,7 +288,7 @@ class SRDNSProxy(SRNDaemon):
     KILL_PATTERNS = (NAME,)
 
     def build(self):
-        cfg = super(SRDNSProxy, self).build()
+        cfg = super().build()
 
         cfg.router_name = self._node.name
         cfg.max_queries = self.options.max_queries
@@ -289,7 +297,9 @@ class SRDNSProxy(SRNDaemon):
         cfg.dns_server_port = self._node.nconfig.daemon(
             SRNNamed.NAME).options.dns_server_port
 
-        cfg.proxy_listen_addr = self.options.sr_controller_ip  # Acceptable since we require the daemon with OVSDB
+        # XXX Does not work if we listen on all addresses because it might reply with another address
+        # than the one sue to reach it
+        cfg.proxy_listen_addr = self._node.intf("lo").ip6
         cfg.proxy_listen_port = self.options.proxy_listen_port
 
         cfg.client_server_fifo = self.options.client_server_fifo
@@ -306,7 +316,7 @@ class SRDNSProxy(SRNDaemon):
         defaults.proxy_listen_port = 53
         defaults.client_server_fifo = os.path.join("/tmp", self._filename(suffix='fifo'))
 
-        super(SRDNSProxy, self).set_defaults(defaults)
+        super().set_defaults(defaults)
 
 
 class SRCtrl(SRNDaemon):
@@ -315,7 +325,7 @@ class SRCtrl(SRNDaemon):
     KILL_PATTERNS = (NAME,)
 
     def build(self):
-        cfg = super(SRCtrl, self).build()
+        cfg = super().build()
 
         cfg.rules_file = self.rules_cfg_filename
         cfg.worker_threads = self.options.worker_threads
@@ -331,7 +341,7 @@ class SRCtrl(SRNDaemon):
         defaults.worker_threads = 1
         defaults.req_buffer_size = 16
 
-        super(SRCtrl, self).set_defaults(defaults)
+        super().set_defaults(defaults)
 
     @property
     def rules_cfg_filename(self):
@@ -344,12 +354,12 @@ class SRCtrl(SRNDaemon):
 
     @property
     def cfg_filenames(self):
-        return super(SRCtrl, self).cfg_filenames + \
+        return super().cfg_filenames + \
                [self.rules_cfg_filename]
 
     @property
     def template_filenames(self):
-        return super(SRCtrl, self).template_filenames + \
+        return super().template_filenames + \
                [self.rules_template_filename]
 
 
@@ -359,12 +369,12 @@ class SRRouted(SRNDaemon):
     DEFAULT_COST = 0.000001
 
     def __init__(self, node, **kwargs):
-        super(SRRouted, self).__init__(node, **kwargs)
+        super().__init__(node, **kwargs)
         self.localsid_idx = -1
         self.localsid_name = None
 
     def build(self):
-        cfg = super(SRRouted, self).build()
+        cfg = super().build()
         cfg.router_name = self._node.name
         cfg.ingress_iface = realIntfList(self._node)[0]
         cfg.localsid = self.add_localsid_table()
@@ -397,7 +407,7 @@ class SRRouted(SRNDaemon):
         self.localsid_name = localsid_name
 
         i = 1
-        while i < 2**32:
+        while i < 2 ** 32:
             if i not in reserved_ids:
                 self.localsid_idx = i
                 break
@@ -440,15 +450,11 @@ class SRRouted(SRNDaemon):
                 for line in filter(lambda x: self.rt_tables_line() != x, content):
                     fileobj.write(line)
 
-        super(SRRouted, self).cleanup()
+        super().cleanup()
 
 
 def ovsdb_daemon(node):
     return node.nconfig.daemon(OVSDB.NAME)
-
-
-def cost_intf(intf):
-    return intf.delay if intf.delay else SRRouted.DEFAULT_COST
 
 
 def find_controller(base, sr_controller):
@@ -462,7 +468,7 @@ def find_controller(base, sr_controller):
         asn = base.asn
 
     visited = set()
-    to_visit = [(cost_intf(intf), intf) for intf in realIntfList(base)]
+    to_visit = [(0, intf) for intf in realIntfList(base)]
     heapq.heapify(to_visit)
 
     # Explore all interfaces in base ASN recursively, until we find one
@@ -473,6 +479,8 @@ def find_controller(base, sr_controller):
             continue
         visited.add(intf)
         for peer_intf in intf.broadcast_domain.routers:
+            if peer_intf == intf:
+                continue
             if peer_intf.node.name == sr_controller:
                 ip6s = peer_intf.node.intf("lo").ip6s(exclude_lls=True, exclude_lbs=True)
                 for ip6 in ip6s:
@@ -480,5 +488,5 @@ def find_controller(base, sr_controller):
                 return peer_intf.ip6, ovsdb_daemon(peer_intf.node)
             elif peer_intf.node.asn == asn or not peer_intf.node.asn:
                 for x in realIntfList(peer_intf.node):
-                    heapq.heappush(to_visit, (cost + cost_intf(x), x))
+                    heapq.heappush(to_visit, (cost + 1, x))
     return None, None

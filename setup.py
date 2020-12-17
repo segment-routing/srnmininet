@@ -23,20 +23,19 @@ setup(
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "Topic :: System :: Networking",
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7'
+        'Programming Language :: Python :: 3'
     ],
     keywords='networking SRv6 IPMininet OSPF IP BGP quagga mininet SRN',
     license='GPLv2',
     install_requires=[
         'setuptools',
         'ipmininet',
-        'sr6mininet',
         'numpy',
         'psutil',
-        'mako'
+        'mako',
+        'mininet'
     ],
     tests_require=[],
     setup_requires=[],
-    url='https://bitbucket.org/jadinm/sr6mininet'
+    url='https://bitbucket.org/jadinm/srnmininet'
 )

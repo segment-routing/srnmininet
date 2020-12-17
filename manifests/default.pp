@@ -19,11 +19,6 @@ $zlog_source_path = "${zlog_root_dir}/zlog-${zlog_version}"
 $zlog_download_path = "${zlog_source_path}.tar.gz"
 $zlog_path = "/usr/local/lib/libzlog.so"
 
-$ipmininet_repo = "https://github.com/oliviertilmans/ipmininet.git"
-$ipmininet_path = "/home/vagrant/ipmininet"
-$sr6mininet_repo = "https://bitbucket.org/jadinm/sr6mininet.git"
-$sr6mininet_path = "/home/vagrant/sr6mininet"
-
 $srnmininet_path = "/home/vagrant/srnmininet"
 $srn_repo = "https://github.com/segment-routing/srn.git"
 $srn_path = "/home/vagrant/srn"
@@ -43,22 +38,17 @@ exec { 'apt-update':
 
 # Python packages
 package { 'python-setuptools': }
-package { 'python-pip': }
 package { 'py2-ipaddress':
-  require  => Package['python-pip'],
-  provider => 'pip',
+  provider => 'pip3',
 }
 package { 'mako':
-  require  => Package['python-pip'],
-  provider => 'pip',
+  provider => 'pip3',
 }
 package { 'six':
-  require  => Package['python-pip'],
-  provider => 'pip',
+  provider => 'pip3',
 }
 package { 'psutil':
-  require  => Package['python-pip'],
-  provider => 'pip',
+  provider => 'pip3',
 }
 
 # Networking
@@ -106,30 +96,11 @@ exec { 'locales':
   command => "locale-gen fr_BE.UTF-8; update-locale",
 }
 
-# IPMininet
-
-exec { 'ipmininet-download':
-  require => Package['git'],
-  creates => $ipmininet_path,
-  command => "git clone ${ipmininet_repo} ${ipmininet_path}",
-}
-exec { 'ipmininet':
-  require => [ Exec['locales'], Exec['apt-update'], Package['mininet'], Package['mako'], Exec['ipmininet-download'] ],
-  command => "pip install -e ${ipmininet_path}",
-}
-exec { 'sr6mininet-download':
-  require => Package['git'],
-  creates => $sr6mininet_path,
-  command => "git clone ${sr6mininet_repo} ${sr6mininet_path} && chown -R vagrant:vagrant ${sr6mininet_path}",
-}
-exec { 'sr6mininet':
-  require => [ Exec['ipmininet'], Exec['sr6mininet-download'] ],
-  command => "pip install -e ${sr6mininet_path}",
-}
-
+# srnmininet
+# We are already in the ipmininet VM, so no need to install that before
 exec { 'srnmininet':
-  require => Exec['sr6mininet'],
-  command => "pip install -e ${srnmininet_path}",
+  require => Exec['ipmininet'],
+  command => "pip3 install -e ${srnmininet_path}",
 }
 
 # SRN

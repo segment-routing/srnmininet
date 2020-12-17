@@ -1,17 +1,16 @@
 import errno
-import mininet.clean
 import os
-import sys
-import time
+
+from ipmininet.router import Router
+from ipmininet.router.config import RouterConfig
+from ipmininet.router.config.ospf6 import OSPF6RedistributedRoute
+from ipmininet.srv6 import enable_srv6
 from mininet.log import lg
 
-from ipmininet.router.config.ospf6 import OSPF6RedistributedRoute
-from sr6mininet.sr6router import SR6Config, SR6Router
 
+class SRNConfig(RouterConfig):
 
-class SRNConfig(SR6Config):
-
-    def __init__(self, node, additional_daemons=(), *args, **kwargs):
+    def __init__(self, node: 'SRNRouter', additional_daemons=(), *args, **kwargs):
         """A simple router made of at least an OSPF daemon
 
         :param additional_daemons: Other daemons that should be used"""
@@ -36,8 +35,7 @@ class SRNConfig(SR6Config):
             if node.access_router:
                 d.append(SRRouted)
         d.extend(additional_daemons)
-        super(SR6Config, self).__init__(node, daemons=d,
-                                        *args, **kwargs)
+        super().__init__(node, daemons=d, *args, **kwargs)
 
 
 def mkdir_p(path):
@@ -50,11 +48,27 @@ def mkdir_p(path):
             raise
 
 
-class SRNRouter(SR6Router):
+class SRNRouter(Router):
 
     def __init__(self, name, config=SRNConfig, cwd="/tmp", static_routing=False, *args, **kwargs):
-        super(SRNRouter, self).__init__(name, config=config, cwd=cwd, static_routing=static_routing, *args, **kwargs)
+        # Variables defined before to be accessible for config daemons
+        self.static_routing = static_routing
+        super().__init__(name, config=config, cwd=cwd, *args, **kwargs)
         mkdir_p(cwd)
+
+    def start(self):
+        enable_srv6(self)
+
+        # Set SRv6 source address for encapsulation
+        for ip6 in self.intf('lo').ip6s(exclude_lls=True, exclude_lbs=True):
+            cmd = ["ip", "sr", "tunsrc", "set", ip6.ip.compressed]
+            out, err, code = self.pexec(cmd)
+            if code:
+                lg.error(self.name, 'Cannot set SRv6 source address [rcode:', str(code),
+                         ']\nstdout:', str(out), '\nstderr:', str(err))
+            break
+
+        super().start()
 
     @property
     def controller(self):

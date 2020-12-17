@@ -45,7 +45,7 @@ class SquareAxA(SRNTopo):
         controller = self.grid[controller_idx]
         self.schema_tables = schema_tables if schema_tables else {}
 
-        super(SquareAxA, self).__init__(controller, *args, **kwargs)
+        super().__init__(controller, *args, **kwargs)
 
     def build(self, *args, **kwargs):
 
@@ -66,19 +66,11 @@ class SquareAxA(SRNTopo):
         self.addLink(self.grid[0], client)
         self.addLink(self.grid[-1], server)
 
-        self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0],),
-                                     sr_controller=self.controllers[0], schema_tables=self.schema_tables))
+        self.addOverlay(SRCtrlDomain(access_routers=(self.grid[0],), sr_controller=self.controllers[0],
+                                     schema_tables=self.schema_tables, hosts=self.hosts()))
 
-        super(SquareAxA, self).build(*args, **kwargs)
+        super().build(*args, **kwargs)
 
-    def addLink(self, node1, node2, **opts):
-
-        default_params1 = {"bw": self.link_bandwidth, "delay": self.link_delay}
-        default_params1.update(opts.get("params1", {}))
-        opts["params1"] = default_params1
-
-        default_params2 = {"bw": self.link_bandwidth, "delay": self.link_delay}
-        default_params2.update(opts.get("params2", {}))
-        opts["params2"] = default_params2
-
-        return super(SRNTopo, self).addLink(node1, node2, **opts)
+    def addLink(self, node1, node2, delay=None, **opts):
+        delay = self.link_delay if delay is None else delay
+        return super().addLink(node1, node2, delay=delay, bw=self.link_bandwidth)
