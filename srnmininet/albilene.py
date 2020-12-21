@@ -24,10 +24,10 @@ class Albilene(SRNTopo):
     Link latencies are set at 1ms except for the latency of (C, E) which has a latency of 5ms.
     """
 
-    def __init__(self, schema_tables=None, link_bandwidth=100, *args, **kwargs):
+    def __init__(self, schema_tables=None, link_bandwidth=0, link_delay="1ms", *args, **kwargs):
         """:param schema_tables: The schema table of ovsdb
            :param link_bandwidth: The link bandwidth"""
-        self.link_delay = "1ms"
+        self.link_delay = link_delay
         self.link_bandwidth = link_bandwidth
         self.schema_tables = schema_tables if schema_tables else {}
 
@@ -67,9 +67,6 @@ class Albilene(SRNTopo):
                                      hosts=self.hosts()))
 
         super().build(*args, **kwargs)
-
-    def addRouter(self, name, **params):
-        return super().addRouter(name, **params)
 
     def addLink(self, node1, node2, delay=None, **opts):
         delay = self.link_delay if delay is None else delay
