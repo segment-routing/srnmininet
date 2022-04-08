@@ -7,9 +7,10 @@ import ipmininet
 from ipmininet.cli import IPCLI
 
 from srnmininet.square_axa import SquareAxA
+from srnmininet.comp import CompTopo
 from srnmininet.srnnet import SRNNet
 
-topo_classes = [SquareAxA]
+topo_classes = [SquareAxA, CompTopo]
 TOPOS = {topo.__name__: topo for topo in topo_classes}
 
 components = ["sr-ctrl", "sr-routed", "sr-dnsproxy", "sr-nsd"]
@@ -33,6 +34,8 @@ def parse_args():
     parser.add_argument('--log-dir', help='Logging directory root',
                         default='')
     parser.add_argument('--src-dir', help='Source directory root of SR components',
+                        default='')
+    parser.add_argument('--static-routing', help='Whether the routing should be static or depend on SRNOSPF6 daemon', action="store_true",
                         default='')
     return parser.parse_args()
 
@@ -60,6 +63,8 @@ if args.log == 'debug':
 topo_args = parse_key_value_args(args.topo_args)
 topo_args["cwd"] = args.log_dir
 net_args = parse_key_value_args(args.net_args)
+if args.static_routing:
+    net_args["static_routing"] = True
 
 # Add SR components to PATH
 
