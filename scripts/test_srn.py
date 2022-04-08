@@ -12,8 +12,8 @@ from ipmininet.utils import realIntfList
 from mininet.log import LEVELS, lg
 
 from srnmininet.albilene import Albilene
+from srnmininet.comp import CompTopo
 from srnmininet.config.config import SRDNSProxy, SRRouted
-from srnmininet.square_axa import SquareAxA
 from srnmininet.srnnet import SRNNet
 from srnmininet.utils import daemon_in_node
 
@@ -35,15 +35,16 @@ def parse_args():
 
 def test_dns_latency(link_delay):
     cleanup()
+    log_dir = args.log_dir + "-%s" % link_delay
     topo_args = {"schema_tables": full_schema["tables"],
-                 "cwd": args.log_dir,
+                 "cwd": log_dir,
                  "link_delay": link_delay}
-    net = SRNNet(topo=SquareAxA(**topo_args), static_routing=True)
+    net = SRNNet(topo=CompTopo(**topo_args), static_routing=True)
     try:
         net.start()
 
-        client = net["client"]
-        server = net["server"]
+        client = net["comp2"]
+        server = net["comp6"]
         dns_proxy_ip6 = None
         for node in net.routers:
             if daemon_in_node(node, SRDNSProxy) is not None:
@@ -53,9 +54,11 @@ def test_dns_latency(link_delay):
             raise Exception("Cannot find a global address for a node with SRDNSProxy")
 
         time.sleep(10)
-        cmd = [sr_testdns, "sr", "100", server.name + ".test.sr", dns_proxy_ip6]
+        cmd = [sr_testdns, "sr", "10", server.name + ".test.sr", dns_proxy_ip6]
+        print(cmd)
+        IPCLI(net)
         out = client.cmd(cmd)
-        with open(os.path.join(args.log_dir, "sr-testdns-5ms-rtt.log"), "w") as fileobj:
+        with open(os.path.join(log_dir, "sr-testdns-%s-rtt.log" % link_delay), "w") as fileobj:
             fileobj.write(str(out))
     finally:
         net.stop()
@@ -200,6 +203,8 @@ os.environ["PATH"] += os.pathsep + os.path.join(os.path.abspath(args.src_dir), "
 
 # Give the database description to the topology
 test_dns_latency("1ms")
+test_dns_latency("5ms")
+# TODO Plot
 
 # Flapping link
-test_flapping_link()
+# test_flapping_link()
